@@ -1,16 +1,24 @@
+_QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m 4G -M q35 -smp 1 $(QEMU_FLAGS)
+
+_QEMU_FLAGS_UEFI := -drive if=pflash,format=raw,unit=0,file="OVMF/OVMF_CODE.fd",readonly=on \
+		-drive if=pflash,format=raw,unit=1,file="OVMF/OVMF_VARS.fd",readonly=on \
+		$(_QEMU_FLAGS) $(QEMU_FLAGS_UEFI)
+
 run: prepare_img
-	qemu-system-x86_64 -cdrom arzene.iso -no-reboot -no-shutdown \
-		-drive if=pflash,format=raw,unit=0,file="OVMF/OVMF_CODE.fd",readonly=on \
-		-drive if=pflash,format=raw,unit=1,file="OVMF/OVMF_VARS.fd" -m 4G -smp 4
+	qemu-system-x86_64 $(_QEMU_FLAGS) -enable-kvm
+
+uefi: prepare_img
+	qemu-system-x86_64 $(_QEMU_FLAGS_UEFI) -enable-kvm
 
 test:
-	qemu-system-x86_64 -cdrom arzene.iso -no-reboot -no-shutdown \
-		-drive if=pflash,format=raw,unit=0,file="OVMF/OVMF_CODE.fd",readonly=on \
-		-drive if=pflash,format=raw,unit=1,file="OVMF/OVMF_VARS.fd" -m 4G -smp 4 -d int
+	qemu-system-x86_64 $(_QEMU_FLAGS) -d int
 
-prepare_img: build
-	@bootstuff/mkbootimg bootstuff/config.json arzene.iso
+debug:
+	qemu-system-x86_64 $(_QEMU_FLAGS_UEFI) \
+		-S -s > /dev/null & gdb preloader/out/preloader --eval-command="target remote :1234"
 
-build:
-	@$(MAKE) --no-print-directory -C kernel
-	@cp kernel/out/kernel bootstuff/initrd/kernel
+prepare_img:
+	@$(MAKE) -C kernel
+	@$(MAKE) -C preloader
+	@cp preloader/out/preloader bootstuff/kernel
+	@grub-mkrescue bootstuff -o arzene.iso --quiet

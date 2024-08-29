@@ -21,8 +21,6 @@ memcpy:
 	rep movsb
 	ret
 
-
-
 #
 ##
 ##### TODO: AVX, SSE

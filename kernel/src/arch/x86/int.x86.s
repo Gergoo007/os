@@ -71,7 +71,9 @@ pushall:
 	pop %rbx
 	pop %rax
 	pop %r15
-	add $0x10, %rsp
+	// add $0x10, %rsp
+
+	jmp .
 
 	iretq
 
@@ -140,7 +142,7 @@ exc13:
 	cli
 	push $13
 	jmp pushall
-exc14:
+exc14: # 0xffffffffffffffa0
 	cli
 	push $14
 	jmp pushall

@@ -6,34 +6,31 @@ COBJS := $(patsubst %.c,out/%.c.o,$(CSRCS))
 SSRCS := $(subst src/,,$(call rwildcard,src,*.s))
 SOBJS := $(patsubst %.s,out/%.s.o,$(SSRCS))
 
-CC ?= gcc
-AS ?= as
-LD ?= ld.gold
-
-CFLAGS := -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
+_CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
 	-Isrc -xc -std=gnu17 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
-	-Wno-incompatible-library-redeclaration -Wno-unused-parameter -fno-stack-protector
+	-Wno-unused-parameter -fno-stack-protector -O0 -g \
+	-Wno-multichar
 ASFLAGS :=
-LDFLAGS := -T src/link.ld
+LDFLAGS := -T ldscript -z max-page-size=0x1000
 
 kernel: clean
 	@$(MAKE) --no-print-directory link
 
 link: $(SOBJS) $(COBJS) out/font.o
 	@echo "  > $(LD) $@"
-	@$(LD) $(LDFLAGS) out/*.o -o out/kernel
+	@ld.gold $(LDFLAGS) out/*.o -o out/kernel
 
 out/%.c.o: src/%.c
 	@echo "  > $(CC) $^"
-	@$(CC) $(CFLAGS) -c $^ -o out/$(notdir $@)
+	@gcc $(_CFLAGS) -c $^ -o out/$(notdir $@)
 
 out/%.s.o: src/%.s
 	@echo "  > $(AS) $^"
-	@$(AS) $(ASFLAGS) -c $^ -o out/$(notdir $@)
+	@as $(ASFLAGS) -c $^ -o out/$(notdir $@)
 
 out/font.o: src/font.psf
 	@echo "  > $(LD) $^"
-	@$(LD) -r -b binary $^ -o $@
+	@ld.gold -r -b binary $^ -o $@
 
 clean:
 	@rm -rf out

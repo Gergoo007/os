@@ -1,33 +1,90 @@
 #include <mm/pmm.h>
-#include <util/bootboot.h>
 #include <gfx/console.h>
+#include <serial/serial.h>
 
-#include <util/bitmap.h>
+#include <mm/paging.h>
 
-u64 heap_base;
+#include <arch/x86/cpuid.h>
+
+u64 heap_base_phys;
+u64 heap_base_virt;
 u64 heap_size;
 
 bitmap pmm_bm;
 
-void pmm_init() {
-	typeof(*bootboot.mmap_entries)* entry = bootboot.mmap_entries;
-	u32 num_entries = (bootboot.size - 128) / 16;
+u64 pmm_mem_all;
+u64 pmm_mem_free;
+u64 pmm_mem_used;
 
-	for (u32 i = 0; i < num_entries; i++, entry++) {
-		if (!mmap_free(entry)) continue;
+void pmm_init(mb_tag* mmap) {
+	typedef struct {
+		u64 base_addr;
+		u64 length;
+		u32 type;
+		u32 reserved;
+	} entry;
 
-		// 16G van identity mappelve
-		if (mmap_ptr(entry) > 16ULL*1024*1024*1024) continue;
+	enum {
+		MEM_FREE = 1,
+		MEM_ACPI = 3,
+		MEM_RES = 4,
+		MEM_BAD = 5,
+	};
 
-		if (heap_size < mmap_size(entry)) {
-			heap_base = mmap_ptr(entry);
-			heap_size = mmap_size(entry);
+	u32 tagsize = mmap->size;
+	u32 num_ents = (tagsize - 16) / 24;
+
+	// A preloader az első szabad helyre rakja a kernelt
+	u8 firstfree = 1;
+	for (entry* e = (entry*)(mmap+2); num_ents; e++, num_ents--) {
+		pmm_mem_all += e->length;
+		if (e->type == MEM_FREE) {
+			pmm_mem_free += e->length;
+
+			if (firstfree || e->base_addr == 0x100000) {
+				// if (e->length < 0x30000) {
+				// 	firstfree = 0;
+				// 	continue;
+				// }
+
+				heap_base_phys = e->base_addr + 0x30000;
+				heap_size = e->length;
+				firstfree = 0;
+			}
+
+			if (e->length > heap_size) {
+				heap_base_phys = e->base_addr;
+				heap_size = e->length;
+			}
 		}
 	}
 
-	printk("Valasztott heap: %dG @ %p\n", heap_size / 1024 / 1024 / 1024, heap_base);
+	heap_base_phys = 0x40200000;
 
-	pmm_bm.base = (u8*)heap_base;
+	sprintk("%d M RAM\n\r", pmm_mem_all >> 20);
+	sprintk("Heap @ %p size %d M\n\r", heap_base_phys, heap_size >> 20);
+
+	// Heap mappelése
+	if (heap_base_phys < 0x40000000) goto megvan;
+
+	// TODO: kell ez? (az if?)
+	u64 heap_base2m;
+	if (heap_base_phys & 0x1fffff)
+		heap_base2m = heap_base_phys & ~0x1fffff;
+	else
+		heap_base2m = heap_base_phys;
+
+	u64 heap_vaddr = 0xffff800000000000 + heap_base2m;
+	if (cpu_ps_1g()) {
+		
+	} else {
+		
+	}
+
+megvan:
+	heap_base_virt = heap_base_phys | 0xffff800000000000;
+
+	pmm_bm.base = (u8*)heap_base_virt;
 	pmm_bm.size = heap_size / 0x1000 / 8 + 1;
 
 	pmm_bm.size |= 0b111;
@@ -42,9 +99,13 @@ void pmm_init() {
 }
 
 void* pmm_alloc() {
-	return (void*)heap_base + bm_alloc(&pmm_bm)*0x1000;
+	pmm_mem_free -= 0x1000;
+	pmm_mem_used += 0x1000;
+	return (void*)heap_base_phys + bm_alloc(&pmm_bm)*0x1000;
 }
 
 void pmm_free(void* p) {
-	bm_set(&pmm_bm, ((u64)p - heap_base) / 0x1000, 0);
+	pmm_mem_free += 0x1000;
+	pmm_mem_used -= 0x1000;
+	bm_set(&pmm_bm, ((u64)p - heap_base_phys) / 0x1000, 0);
 }

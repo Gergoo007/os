@@ -1,0 +1,27 @@
+ENTRY("kentry")
+
+SECTIONS {
+	. = 0xffffffffce000000;
+	. += SIZEOF_HEADERS;
+	. = ALIGN(0x1000);
+
+	.text : {
+		*(.text)
+	}
+
+	.data : {
+		*(.data)
+	}
+
+	BSS_START = .;
+
+	.bss : {
+		*(.bss)
+	}
+
+	/DISCARD/ : {
+		*(.note.gnu.property)
+		*(.comment)
+		*(.eh_frame)
+	}
+}

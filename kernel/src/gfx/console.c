@@ -67,9 +67,12 @@ void cputc(char c) {
 
 	if ((u32)con_cx + font.glyph_width*2 + 2 >= fb_main.width) {
 		// Sortörés
-		for (u8 y = 0; y < font.glyph_height; y++)
-			for (u8 x = 0; x < font.glyph_width; x++)
+		for (u8 y = 0; y < font.glyph_height; y++) {
+			for (u8 x = 0; x < font.glyph_width; x++) {
+				sprintk("@ %d %d\n\r", con_cx + x, con_cy + y);
 				fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
+			}
+		}
 
 		con_cy += font.glyph_height + 1;
 		con_cx = 0;

@@ -18,3 +18,5 @@ typedef _Bool bool;
 #define va_end(v)		__builtin_va_end(v)
 #define va_arg(v,l)		__builtin_va_arg(v,l)
 #define va_list __builtin_va_list
+
+#define foreach(var, l) for (i64 var = 0; var < (l); var++)

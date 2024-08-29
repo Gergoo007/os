@@ -1,0 +1,25 @@
+ENTRY(pmain)
+
+SECTIONS {
+	. = 0x100000;
+	. += SIZEOF_HEADERS;
+	. = ALIGN(0x1000);
+
+	.text : {
+		*(.text)
+	}
+
+	.data : {
+		*(.data)
+	}
+
+	.bss : {
+		*(.bss)
+	}
+
+	/DISCARD/ : {
+		*(.note.gnu.property)
+		*(.comment)
+		*(.eh_frame)
+	}
+}

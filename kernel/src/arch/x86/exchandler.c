@@ -3,6 +3,8 @@
 #include <gfx/console.h>
 #include <serial/serial.h>
 
+#include <mm/paging.h>
+
 #define print_reg(st, reg) printk("%s: %p ", #reg, st->reg)
 #define sprint_reg(st, reg) sprintk("%s: %p ", #reg, st->reg)
 

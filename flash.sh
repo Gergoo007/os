@@ -1,5 +1,5 @@
 if [[ -b "$1" ]]; then
-	make build
+	make prepare_img
 	doas dd if=arzene.iso of=$1 bs=4M conv=fsync
 	exit 0
 else

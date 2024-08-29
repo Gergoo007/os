@@ -43,6 +43,21 @@ void printf(void (*putc)(char c),
 					break;
 				}
 
+				case '.': {
+					fmt++;
+					u8 num = *fmt - '0';
+					fmt++;
+
+					if (*fmt == 's') {
+						char* str = va_arg(l, char*);
+						while (num--) {
+							putc(*(str++));
+						}
+					}
+
+					break;
+				}
+
 				default: {
 					if (*fmt >= '0' && *fmt <= '9') {
 						fmt++;

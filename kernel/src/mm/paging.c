@@ -1,105 +1,128 @@
 #include <mm/paging.h>
-#include <mm/pmm.h>
 #include <util/mem.h>
+
+#include <gfx/console.h>
+#include <arch/x86/cpuid.h>
+#include <serial/serial.h>
+
+#include <mm/pmm.h>
+#include <mm/vmm.h>
 
 page_table* pml4;
 
+extern char BSS_START;
+
 void paging_init(void) {
-	asm volatile("movq %%cr3, %0" : "=a"(pml4));
-}
+	// RAM többi részének mappelése
+	if (pmm_mem_all < (4ULL<<30)) return;
 
-u64 paging_lookup_2m(u64 virt) {
-	// indexek
-	u16 pdi = (virt >> 21ULL) & 511ULL;
-	u16 pdpi = (virt >> 30ULL) & 511ULL;
-	u16 pml4i = (virt >> 39ULL) & 511ULL;
+	u64 remaining_gibs = (pmm_mem_all >> 30) + 1;
+	page_table* pdp = (page_table*)(pml4->entries[256].addr & ~0x0fff);
+	if (cpu_ps_1g()) {
+		for (u64 i = 4; i < remaining_gibs; i++) {
+			pdp->entries[i].addr = (i*0x40000000) | 0b10000011;
+		}
+	} else {
+		for (u64 i = 4; i < remaining_gibs; i++) {
+			page_table* pd = pmm_alloc();
+			memset_aligned(pd, 0, 0x200);
+			for (u64 j = 0; j < 512; j++) {
+				pd->entries[j].addr = (i*0x40000000 + j*0x200000) | 0b11;
+			}
 
-	page_table* pdp = (page_table*)(pml4->entries[pml4i].addr & ~0x1fffff);
-	page_table* pd = (page_table*)(pdp->entries[pdpi].addr & ~0x1fffff);
-	return pd->entries[pdi].addr & ~0x1fffff;
+			pdp->entries[i].addr = (u64)pd | 0b11;
+		}
+	}
 }
 
 u64 paging_lookup(u64 virt) {
-	// indexek
-	u16 pti = (virt >> 12ULL) & 511ULL;
-	u16 pdi = (virt >> 21ULL) & 511ULL;
-	u16 pdpi = (virt >> 30ULL) & 511ULL;
-	u16 pml4i = (virt >> 39ULL) & 511ULL;
+	page_table* cr3;
+	asm volatile ("movq %%cr3, %0" : "=r"(cr3));
 
-	page_table* pdp = (page_table*) (pml4->entries[pml4i].addr & ~0x0fff);
-	page_table* pd = (page_table*) (pdp->entries[pdpi].addr & ~0x0fff);
-	page_table* pt = (page_table*) (pd->entries[pdi].addr & ~0x0fff);
-
-	return pt->entries[pti].addr & ~(0x0fff);
+	page_table* pdp = (page_table*)(cr3->entries[ADDR_PML4I(virt)].addr & ~0x0fff);
+	page_table* pd = (page_table*)(pdp->entries[ADDR_PDPI(virt)].addr & ~0x0fff);
+	if (pdp->entries[ADDR_PDPI(virt)].flags & MAP_FLAGS_HUGE) {
+		return (u64)pd + (virt & ((1 << 30)-1));
+	} else {
+		page_table* pt = (page_table*)(pd->entries[ADDR_PDI(virt)].addr & ~0x0fff);
+		if (pd->entries[ADDR_PDI(virt)].flags & MAP_FLAGS_HUGE) {
+			return (u64)pt + (virt & 0x1fffff);
+		} else {
+			return (pt->entries[ADDR_PTI(virt)].addr & ~0x0fff) + (virt & 0x0fff);
+		}
+	}
 }
 
 void map_page(u64 virt, u64 phys, u32 flags) {
-	if (!flags) flags = 0b111;
-	
-	// indexek
-	u16 pti = (virt >> 12ULL) & 511ULL;
-	u16 pdi = (virt >> 21ULL) & 511ULL;
-	u16 pdpi = (virt >> 30ULL) & 511ULL;
-	u16 pml4i = (virt >> 39ULL) & 511ULL;
-
 	page_table* pdp;
 	page_table* pd;
 	page_table* pt;
 
 	page_table_entry* entry;
 
-	entry = &pml4->entries[pml4i];
-	if (entry->flags & 1) {
-		pdp = (page_table*) (pml4->entries[pml4i].addr & ~0xfff);
+	u8 size;
+	if (flags & MAP_FLAGS_2M) {
+		phys &= ~((1ULL << 21)-1);
+		virt &= ~((1ULL << 21)-1);
+		size = 1;
+	} else if (flags & MAP_FLAGS_1G) {
+		phys &= ~((1ULL << 30)-1);
+		virt &= ~((1ULL << 30)-1);
+		size = 2;
 	} else {
-		pdp = (page_table*)pmm_alloc();
-		memset(pdp, 0, 0x1000);
-		pml4->entries[pml4i].addr = (u64)pdp;
-		pml4->entries[pml4i].flags |= flags;
+		phys &= ~((1ULL << 12)-1);
+		virt &= ~((1ULL << 12)-1);
+		size = 0;
 	}
 
-	entry = &pdp->entries[pdpi];
-	if (entry->flags & 1) {
-		pd = (page_table*) (pdp->entries[pdpi].addr & ~0x0fff);
+	// Custom flagek (bit 12 fölött) eltávolítása
+	flags &= (1 << 12)-1;
+
+	entry = &pml4->entries[ADDR_PML4I(virt)];
+	if (entry->flags & MAP_FLAGS_PRESENT) {
+		pdp = (page_table*) ((pml4->entries[ADDR_PML4I(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
 	} else {
-		pd = (page_table*)pmm_alloc();
-		memset(pd, 0, 0x1000);
-		pdp->entries[pdpi].addr = (u64)pd;
-		pdp->entries[pdpi].flags |= flags;
+		pdp = (page_table*)vmm_alloc();
+		memset_aligned(pdp, 0, 0x1000/8);
+		pml4->entries[ADDR_PML4I(virt)].addr = (u64)pdp & ~0xffff800000000000ULL;
+		pml4->entries[ADDR_PML4I(virt)].flags = flags;
 	}
 
-	entry = &pd->entries[pdi];
-	if (entry->flags & 1) {
-		pt = (page_table*) (pd->entries[pdi].addr & ~0x0fff);
-	} else {
-		pt = (page_table*)pmm_alloc();
-		memset(pt, 0, 0x1000);
-		pd->entries[pdi].addr = (u64)pt;
-		pd->entries[pdi].flags |= flags;
-	}
-
-	entry = &pt->entries[pti];
-	if (entry->flags & 1) {
-	} else {
+	entry = &pdp->entries[ADDR_PDPI(virt)];
+	if (size == 2) { // 1G page
 		entry->addr = phys;
-		entry->flags |= flags;
+		entry->flags = flags | MAP_FLAGS_HUGE;
+		return;
+	} else {
+		if (entry->flags & MAP_FLAGS_PRESENT) {
+			pd = (page_table*) ((pdp->entries[ADDR_PDPI(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
+		} else {
+			pd = (page_table*)vmm_alloc();
+			memset_aligned(pd, 0, 0x1000/8);
+			pdp->entries[ADDR_PDPI(virt)].addr = (u64)pd & ~0xffff800000000000ULL;
+			pdp->entries[ADDR_PDPI(virt)].flags = flags;
+		}
 	}
 
-	asm volatile ("invlpg (%0)" :: "b"(virt));
-}
+	entry = &pd->entries[ADDR_PDI(virt)];
+	if (size == 1) { // 2M page
+		entry->addr = phys;
+		entry->flags = flags | MAP_FLAGS_HUGE;
+		return;
+	} else { // 4K page
+		if (entry->flags & MAP_FLAGS_PRESENT) {
+			pt = (page_table*) ((pd->entries[ADDR_PDI(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
+		} else {
+			pt = (page_table*)vmm_alloc();
+			memset_aligned(pt, 0, 0x1000/8);
+			pd->entries[ADDR_PDI(virt)].addr = (u64)pt & ~0xffff800000000000ULL;
+			pd->entries[ADDR_PDI(virt)].flags = flags;
+		}
 
-void unmap_page(u64 virt) {
-	// indexek
-	u16 pti = (virt >> 12ULL) & 511ULL;
-	u16 pdi = (virt >> 21ULL) & 511ULL;
-	u16 pdpi = (virt >> 30ULL) & 511ULL;
-	u16 pml4i = (virt >> 39ULL) & 511ULL;
+		entry = &pt->entries[ADDR_PTI(virt)];
+		entry->addr = phys;
+		entry->flags = flags;
+	}
 
-	page_table* pdp = (page_table*) (pml4->entries[pml4i].addr & ~0x0fff);
-	page_table* pd = (page_table*) (pdp->entries[pdpi].addr & ~0x0fff);
-	page_table* pt = (page_table*) (pd->entries[pdi].addr & ~0x0fff);
-
-	pt->entries[pti].flags &= ~1ULL;
-
-	asm volatile ("invlpg (%0)" :: "b"(virt));
+	asm volatile ("invlpg (%0)" :: "r"(virt));
 }
