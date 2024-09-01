@@ -89,9 +89,6 @@ pmain:
 	mov %edi, (%esp)
 
 	# TODO: Előre kitöltött táblázatok
-	# TODO: $(pdp_pl | 3)
-	# TODO: A kernel szegmenseinek beépítése a preloaderbe
-	# 		az egész fájl helyett
 	mov $pdp_pl, %eax
 	or $0b11, %eax
 	mov %eax, pml4

@@ -7,7 +7,6 @@
 	enum {
 		ACPI_WAET = 'TEAW',
 		ACPI_HPET = 'TEPH',
-		ACPI_MADT = 'TDAM',
 		ACPI_MCFG = 'GFCM',
 		ACPI_SSDT = 'TDSS',
 		ACPI_FACP = 'PCAF',
@@ -20,7 +19,6 @@
 	enum {
 		ACPI_WAET = 'WAET',
 		ACPI_HPET = 'HPET',
-		ACPI_MADT = 'MADT',
 		ACPI_MCFG = 'MCFG',
 		ACPI_SSDT = 'SSDT',
 		ACPI_FACP = 'FACP',
@@ -86,7 +84,7 @@ enum {
 	MADT_IOAPIC_NMI = 3,
 	MADT_LAPIC_NMI = 4,
 	MADT_LAPIC_ADDR = 5,
-	MADT_LX2APIC = 9,
+	MADT_X2APIC = 9,
 };
 
 typedef struct _attr_packed madt {
@@ -100,55 +98,67 @@ typedef struct _attr_packed madt {
 		u8 len;
 
 		union {
-			struct {
+			struct _attr_packed {
 				u8 acpi_cpu_id;
 				u8 apic_id;
 				u8 cpu_enabled : 1;
 				u8 cpu_online_capable : 1;
 				u32 : 30;
-			} e0;
+			} e_lapic;
 
-			struct {
+			struct _attr_packed {
 				u8 ioapic_id;
 				u8 : 8;
 				u32 ioapic_addr;
 				u32 gsi_base;
-			} e1;
+			} e_ioapic;
 
-			struct {
+			struct _attr_packed {
 				u8 bus_src;
 				u8 irq_src;
 				u32 gsi;
 				u16 flags;
-			} e2;
+			} e_ioapic_overr;
 
-			struct {
+			struct _attr_packed {
 				u8 nmi_src;
 				u8 : 8;
 				u16 flags;
 				u32 gsi;
-			} e3;
+			} e_nmi_ioapic;
 
-			struct {
+			struct _attr_packed {
 				u8 acpi_cpu_id;
 				u16 flags;
 				u8 lint;
-			} e4;
+			} e_nmi_lapic;
 
-			struct {
+			struct _attr_packed {
 				u16 : 16;
 				u64 lapic;
-			} e5;
+			} e_lapic_overr;
 
-			struct {
+			struct _attr_packed {
 				u16 : 16;
-				u32 lx2apic_id;
+				u32 x2apic_id;
 				u32 flags;
 				u32 acpi_id;
-			} e9;
+			} e_x2apic;
 		};
-	} _attr_packed entries[0];
+	} _attr_packed firstent;
 } madt;
+
+typedef struct _attr_packed fadt {
+	sdt_hdr h;
+
+	u32 fw_ctrl;
+	u32 dsdt;
+	u8 : 8;
+	u8 preferred_pm_prof;
+	u16 sci_int;
+	u32 smi_cmd_port;
+	u8 acpi_enable;
+} fadt;
 
 void acpi_init(void* boot_info);
 void acpi_rsdt(rsdt* r);

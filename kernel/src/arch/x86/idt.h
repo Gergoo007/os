@@ -70,4 +70,6 @@ _attr_int void exc17(int_frame* i);
 _attr_int void exc18(int_frame* i);
 _attr_int void exc19(int_frame* i);
 
+_attr_int void exc64(int_frame* i);
+
 void idt_init();

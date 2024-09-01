@@ -1,11 +1,12 @@
 #include <gfx/console.h>
+#include <util/string.h>
+#include <serial/serial.h>
+#include <config.h>
 
 framebuffer fb_main;
 
 u32 con_cx, con_cy;
 u32 con_bg, con_fg = 0xffffffff;
-
-#include <serial/serial.h>
 
 void con_init() {
 	if (font.magic != 0x864ab572) sprintk("Nem talalni PSF2-t!\n\r");
@@ -107,4 +108,70 @@ void cputs(char* s) {
 		cputc(*s);
 		s++;
 	}
+}
+
+void _report(const char* fmt, const char* file, ...) {
+	if (!sizeof(logmod)) return;
+	for (u8 i = 0; i < sizeof(logmod) / sizeof(*logmod); i++) {
+		if (!strcmp(file, logmod[i])) break;
+		if (i == sizeof(logmod) / sizeof(*logmod) - 1) return;
+	}
+
+	u32 old = con_fg;
+	con_fg = 0x00fff000;
+
+	va_list args;
+	va_start(args, file);
+
+	cputc('[');
+	cputs((char*)file);
+	cputc(']');
+	cputc(' ');
+
+	vprintf(cputc, cputs, fmt, args);
+
+	va_end(args);
+	con_fg = old;
+
+	cputc('\n');
+}
+
+void _warn(const char* fmt, const char* file, ...) {
+	u32 old = con_fg;
+	con_fg = 0xff6700;
+
+	va_list args;
+	va_start(args, file);
+	
+	cputc('[');
+	cputs((char*)file);
+	cputc(']');
+	cputc(' ');
+
+	vprintf(cputc, cputs, fmt, args);
+
+	va_end(args);
+	con_fg = old;
+
+	cputc('\n');
+}
+
+void _error(const char* fmt, const char* file, ...) {
+	u32 old = con_fg;
+	con_fg = 0x00ff0000;
+
+	va_list args;
+	va_start(args, file);
+
+	cputc('[');
+	cputs((char*)file);
+	cputc(']');
+	cputc(' ');
+
+	vprintf(cputc, cputs, fmt, args);
+
+	va_end(args);
+	con_fg = old;
+
+	cputc('\n');
 }

@@ -7,7 +7,7 @@ SSRCS := $(subst src/,,$(call rwildcard,src,*.s))
 SOBJS := $(patsubst %.s,out/%.s.o,$(SSRCS))
 
 _CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
-	-Isrc -xc -std=gnu17 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
+	-Isrc -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
 	-Wno-unused-parameter -fno-stack-protector -O0 -g \
 	-Wno-multichar
 ASFLAGS :=

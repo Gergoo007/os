@@ -8,6 +8,10 @@
 
 #include <mm/paging.h>
 
+#include <sysinfo.h>
+
+#include <serial/serial.h>
+
 void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 	while (entries--) {
 		sdt_hdr* table = quadptrs ? (sdt_hdr*)*(u64*)(list+entries*8) : (sdt_hdr*) (u64)*(u32*)(list+entries*4);
@@ -18,9 +22,18 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 				break;
 			}
 
-			case ACPI_MADT: {
+			case ACPI_APIC: {
 				apic_process_madt((madt*)table);
 				break;
+			}
+
+			case ACPI_FACP: {
+				// fadt* f = (fadt*)table;
+				break;
+			}
+
+			default: {
+				report("got %.4s", &table->sign);
 			}
 		}
 	}

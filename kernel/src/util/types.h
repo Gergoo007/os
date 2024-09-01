@@ -12,7 +12,7 @@ typedef long long i64;
 
 typedef u16 wchar;
 
-typedef _Bool bool;
+// typedef _Bool bool;
 
 #define va_start(v, l)	__builtin_va_start(v,l)
 #define va_end(v)		__builtin_va_end(v)

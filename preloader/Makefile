@@ -31,6 +31,7 @@ out/%.s.o: src/%.s
 out/kernel.o: ../kernel/out/kernel
 	@echo "  > $(LD) $^"
 	@cp $^ kernel
+	@strip --strip-all kernel
 	@ld.gold -r -b binary kernel -o $@
 	@rm kernel
 

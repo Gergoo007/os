@@ -19,9 +19,15 @@
 .global exc18
 .global exc19
 
-.extern x86_onexception
+.global exc64
+
+.extern x86_introutine
 
 pushall:
+	// add $0x10, %rsp
+	// jmp .
+	// iretq
+
 	push %rax
 	push %rbx
 	push %rcx
@@ -50,7 +56,7 @@ pushall:
 	mov %ax, %ss
 
 	movq %rsp, %rdi
-	movabsq $x86_onexception, %rax
+	movabsq $x86_introutine, %rax
 	cld
 	call *%rax
 
@@ -71,9 +77,9 @@ pushall:
 	pop %rbx
 	pop %rax
 	pop %r15
-	// add $0x10, %rsp
-
-	jmp .
+	
+	add $0x8, %rsp
+	// jmp .
 
 	iretq
 
@@ -142,7 +148,7 @@ exc13:
 	cli
 	push $13
 	jmp pushall
-exc14: # 0xffffffffffffffa0
+exc14:
 	cli
 	push $14
 	jmp pushall
@@ -169,4 +175,10 @@ exc19:
 	cli
 	push $0
 	push $19
+	jmp pushall
+
+exc64:
+	cli
+	push $0
+	push $64
 	jmp pushall

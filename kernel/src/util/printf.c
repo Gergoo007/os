@@ -2,13 +2,11 @@
 #include <util/types.h>
 #include <util/string.h>
 
-void printf(void (*putc)(char c),
+void vprintf(void (*putc)(char c),
 	void (*puts)(char* str),
-	const char* fmt, ...
+	const char* fmt,
+	va_list l
 ) {
-	va_list l;
-	va_start(l, fmt);
-
 	while (*fmt) {
 		if (*fmt == '%') {
 			fmt++;
@@ -89,6 +87,14 @@ void printf(void (*putc)(char c),
 		}
 		fmt++;
 	}
+}
 
+void printf(void (*putc)(char c),
+	void (*puts)(char* str),
+	const char* fmt, ...
+) {
+	va_list l;
+	va_start(l, fmt);
+	vprintf(putc, puts, fmt, l);
 	va_end(l);
 }

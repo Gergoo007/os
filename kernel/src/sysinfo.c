@@ -1,0 +1,33 @@
+#include <sysinfo.h>
+
+#include <mm/vmm.h>
+
+ioapic* ioapics;
+u32 num_ioapics;
+u8 ioapic_irqs[16] = { // index: irq, value: gsi
+	0,
+	1,
+	0, // Cascade, általában a PIT-re irányít
+	3,
+	4,
+	5,
+	6,
+	7,
+	8,
+	9,
+	10,
+	11,
+	12,
+	13,
+	14,
+	15,
+};
+
+cpu* cpus;
+u32 num_cpus;
+u64 lapic_base;
+
+void sysinfo_init() {
+	ioapics = vmm_alloc();
+	cpus = vmm_alloc();
+}

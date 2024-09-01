@@ -8,10 +8,13 @@
 #include <arch/x86/gdt.h>
 #include <arch/x86/pic.h>
 #include <arch/x86/cpuid.h>
+#include <ps2/kbd.h>
 
 #include <acpi/acpi.h>
 
 #include <boot/multiboot2.h>
+
+#include <sysinfo.h>
 
 _attr_noret void kmain(void* boot_info) {
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
@@ -36,20 +39,34 @@ _attr_noret void kmain(void* boot_info) {
 	printk("Szabad memoria: %dM\n", pmm_mem_free >> 20);
 
 	paging_init();
-	// vmm_init();
-
-	// map_page(0xffff880000000000, (u64)pmm_alloc(), 0b11 | MAP_FLAGS_2M);
-	// *(u8*)0xffff880000000000 = 0xff;
-
-	// while (1);
+	vmm_init();
 
 	gdt_init();
 	idt_init();
 
 	pic_init();
 
+	sysinfo_init();
+
 	acpi_init(boot_info);
 
-	asm volatile ("cli");
+	// *(u8*)0xfffffffffff00000 = 0xff;
+
+	foreach(i, num_cpus) {
+		printk("proci %d (acpi %d); r %d c %d\n", cpus[i].apic_id, cpus[i].acpi_id, cpus[i].enabled, cpus[i].capable);
+	}
+
+	ps2_kbd_init();
+
+	report("Hello world");
+
+	// ioapic_entry e = { .lower = 0, .higher = 0 };
+	// // e.active_low = 1;
+	// // e.lvl_trig = 1;
+	// e.vector = 0x40;
+	// e.mask = 0;
+	// ioapic_write_entry(ioapics, ioapic_irqs[1], e);
+
+	asm volatile ("sti");
 	while (1) { asm volatile ("hlt"); }
 }

@@ -37,6 +37,8 @@ void idt_init() {
 	idt_add_entry(0x0f, (u64)exc15, 0b1111);
 	idt_add_entry(0x10, (u64)exc16, 0b1111);
 
+	idt_add_entry(0x40, (u64)exc64, 0b1110);
+
 	asm volatile ("lidt %0" :: "m"((idtr) {
 		.address = idt,
 		.size = 256*16 - 1,

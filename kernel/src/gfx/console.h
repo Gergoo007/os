@@ -22,6 +22,13 @@ extern u8 _binary_src_font_psf_end;
 
 #define printk(fmt, ...) printf(cputc, cputs, fmt, ##__VA_ARGS__)
 
+#define report(f, ...) _report(f, __FILE_NAME__, ##__VA_ARGS__)
+#define warn(f, ...) _warn(f, __FILE_NAME__, ##__VA_ARGS__)
+#define error(f, ...) _error(f, __FILE_NAME__, ##__VA_ARGS__)
+
 void con_init();
 void cputc(const char c);
 void cputs(char* s);
+void _report(const char* fmt, const char* file, ...);
+void _warn(const char* fmt, const char* file, ...);
+void _error(const char* fmt, const char* file, ...);

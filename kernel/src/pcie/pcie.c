@@ -4,7 +4,7 @@
 #include <gfx/console.h>
 
 void pcie_add_device(pci_hdr* d) {
-	printk("Device found (%s), %s:%04x\n", pci_class(d->class), pci_vendor(d->vendor), d->product);
+	report("Device found (%s), %s:%04x", pci_class(d->class), pci_vendor(d->vendor), d->product);
 }
 
 void pcie_init(mcfg* m) {

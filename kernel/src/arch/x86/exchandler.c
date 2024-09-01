@@ -1,14 +1,49 @@
-#include <arch/x86/exchandler.h>
+#include <arch/x86/idt.h>
 
 #include <gfx/console.h>
 #include <serial/serial.h>
 
 #include <mm/paging.h>
+#include <mm/pmm.h>
+
+#include <arch/x86/apic/apic.h>
+
+#include <ps2/kbd.h>
 
 #define print_reg(st, reg) printk("%s: %p ", #reg, st->reg)
 #define sprint_reg(st, reg) sprintk("%s: %p ", #reg, st->reg)
 
-void x86_onexception(cpu_regs* regs) {
+u8 key_release = 0;
+
+void x86_introutine(cpu_regs* regs) {
+	switch (regs->exc) {
+		case 0x40: {
+			u8 scancode = inb(0x60);
+
+			if (scancode == 0xf0) {
+				key_release = 1;
+				goto end;
+			}
+			if (key_release) {
+				key_release = 0;
+				goto end;
+			}
+
+			printk("%c", ps2_kbd_convert(scancode));
+end:
+			// Send EOI to the LAPIC
+			lapic_eoi();
+
+			break;
+		}
+		default: {
+			printk("Int %02x\n", regs->exc);
+			break;
+		}
+	}
+
+	if (regs->exc > 32) return;
+
 	sprintk("!! EXC 0x%02x %04x @ %p\n\r", regs->exc, regs->err, regs->rip);
 	sprint_reg(regs, rax); sprint_reg(regs, rbx);
 	sprintk("\n\r");
