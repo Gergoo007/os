@@ -3,8 +3,15 @@
 
 #include <gfx/console.h>
 
+#include <storage/ahci/ahci.h>
+
+#include <mm/paging.h>
+
 void pcie_add_device(pci_hdr* d) {
 	report("Device found (%s), %s:%04x", pci_class(d->class), pci_vendor(d->vendor), d->product);
+	if (d->class == 0x01 && d->subclass == 0x06) {
+		ahci_init(d);
+	}
 }
 
 void pcie_init(mcfg* m) {
@@ -13,6 +20,7 @@ void pcie_init(mcfg* m) {
 	foreach (i, num_config_spaces) {
 		for (u32 bus = m->config_spaces[i].bus_start; bus < m->config_spaces[i].bus_end; bus++) {
 			void* bus_address = (void*) (m->config_spaces[i].base + (bus << 20));
+			MAKE_VIRTUAL(bus_address);
 
 			foreach (device, 32) {
 				void* dev_addr = (void*) (bus_address + (device << 15));

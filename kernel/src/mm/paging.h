@@ -24,8 +24,8 @@ enum {
 
 #define MAKE_VIRTUAL(addr) (addr = (typeof(addr))((u64)addr | 0xffff800000000000))
 #define VIRTUAL(addr) ((typeof(addr)) ((u64)addr | 0xffff800000000000))
-// Vagy 0xffff800000000000-ban van (a heapen) vagy 0x0-án
-#define VIRTUAL_EARLY(addr) ((u64)addr < 0x400000ULL ? ((typeof(addr)) addr) : ((typeof(addr)) ((u64)addr | 0xffff800000000000)))
+#define PHYSICAL(addr) ((typeof(addr)) ((u64)addr & ~0xffff800000000000))
+#define MAKE_PHYSICAL(addr) (addr = (typeof(addr))((u64)addr & ~0xffff800000000000))
 
 typedef struct _attr_packed page_table_entry {
 	union {

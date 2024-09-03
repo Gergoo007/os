@@ -1,3 +1,3 @@
 #pragma once
 
-extern char* logmod[1];
+extern char* logmod[0];

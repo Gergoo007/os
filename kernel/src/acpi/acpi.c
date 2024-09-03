@@ -15,6 +15,7 @@
 void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 	while (entries--) {
 		sdt_hdr* table = quadptrs ? (sdt_hdr*)*(u64*)(list+entries*8) : (sdt_hdr*) (u64)*(u32*)(list+entries*4);
+		MAKE_VIRTUAL(table);
 
 		switch (table->sign) {
 			case ACPI_MCFG: {

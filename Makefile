@@ -1,4 +1,7 @@
-_QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m 4G -M q35 -smp 1 $(QEMU_FLAGS)
+_QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m 4G -M q35 \
+		-smp 1 -drive id=disk,file=disk.img,if=none \
+		-device ahci,id=ahci \
+		-device ide-hd,drive=disk,bus=ahci.0 $(QEMU_FLAGS)
 
 _QEMU_FLAGS_UEFI := -drive if=pflash,format=raw,unit=0,file="OVMF/OVMF_CODE.fd",readonly=on \
 		-drive if=pflash,format=raw,unit=1,file="OVMF/OVMF_VARS.fd",readonly=on \

@@ -20,4 +20,10 @@ extern u64 lapic_base;
 extern cpu* cpus;
 extern u32 num_cpus;
 
+#include <storage/storage.h>
+#include <storage/ahci/ahci.h>
+
+extern stg_dev* drives;
+extern u32 num_drives;
+
 void sysinfo_init();

@@ -24,7 +24,7 @@ void apic_process_madt(madt* m) {
 		switch (entry->type) {
 			case MADT_IOAPIC: {
 				// printk("ioapic @ %p\n",entry->e_ioapic.ioapic_addr);
-				ioapics[num_ioapics].base = entry->e_ioapic.ioapic_addr;
+				ioapics[num_ioapics].base = entry->e_ioapic.ioapic_addr | 0xffff800000000000;
 				ioapics[num_ioapics].gsi_base = entry->e_ioapic.gsi_base;
 				ioapics[num_ioapics].id = entry->e_ioapic.ioapic_id;
 				num_ioapics++;
@@ -38,7 +38,7 @@ void apic_process_madt(madt* m) {
 			}
 
 			case MADT_LAPIC: {
-				lapic_base = m->lapic;
+				lapic_base = m->lapic | 0xffff800000000000;
 				cpus[num_cpus].acpi_id = entry->e_lapic.acpi_cpu_id;
 				cpus[num_cpus].apic_id = entry->e_lapic.apic_id;
 				cpus[num_cpus].capable = entry->e_lapic.cpu_online_capable;

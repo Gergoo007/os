@@ -3,6 +3,8 @@
 #include <util/attrs.h>
 #include <util/types.h>
 
+#include <arch/x86/tss.h>
+
 enum {
 	GDT_LDT = 2,
 	GDT_TSS_AVL = 9,
@@ -34,7 +36,7 @@ typedef struct _attr_packed gdt_entry {
 		} sys_seg_desc;
 	} access_byte;
 	u8 limit2 : 4;
-	u8 : 1;
+	u8 avl : 1;
 	u8 long_mode : 1;
 	u8 size : 1;
 	u8 limit_in_pages : 1; // granularity
@@ -48,3 +50,4 @@ typedef struct _attr_packed gdtr {
 
 void gdt_init();
 void gdt_load(gdtr*);
+void gdt_add_tss(tss* t);
