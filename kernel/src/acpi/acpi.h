@@ -41,6 +41,14 @@ typedef struct _attr_packed sdt_hdr {
 	u32 creator_rev;
 } sdt_hdr;
 
+typedef struct _attr_packed gas {
+	u8 addr_space; // 0 - sys mem, 1 - io mem
+	u8 reg_bit_width;
+	u8 reg_bit_offset;
+	u8 : 8;
+	u64 address;
+} gas;
+
 typedef struct _attr_packed rsdp {
 	u64 sign;
 	u8 checksum;
@@ -159,6 +167,21 @@ typedef struct _attr_packed fadt {
 	u32 smi_cmd_port;
 	u8 acpi_enable;
 } fadt;
+
+typedef struct _attr_packed hpet_table {
+	sdt_hdr h;
+
+	u8 hw_rev;
+	u8 comparators : 5;
+	u8 counter_64 : 1;
+	u8 : 1;
+	u8 legacy : 1;
+	u16 vendor;
+	gas addr;
+	u8 hpet_num;
+	u16 min_tick;
+	u8 page_prot;
+} hpet_table;
 
 void acpi_init(void* boot_info);
 void acpi_rsdt(rsdt* r);

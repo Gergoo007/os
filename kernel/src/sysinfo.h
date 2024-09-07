@@ -6,12 +6,18 @@
 
 #include <arch/x86/apic/apic.h>
 #include <arch/x86/cpu.h>
+#include <arch/x86/clocks/hpet.h>
 
 extern ioapic* ioapics;
 extern u32 num_ioapics;
 extern u8 ioapic_irqs[16];
 
 extern u64 lapic_base;
+
+extern hpet* hpets;
+extern u32 num_hpets;
+
+extern u8 timer; // 0: PIT; 1: HPET
 
 #else
 

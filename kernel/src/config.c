@@ -1,5 +1,5 @@
 #include <config.h>
 
-char* logmod[0] = {
-	
+char* logmod[1] = {
+	"hpet.c"
 };

@@ -48,11 +48,20 @@ inl:
 	inl %dx, %eax
 	ret
 
-# void sputc(const char c);
+// # void sputc(const char c);
+// sputc:
+// 	mov %dil, %al
+// 	mov $0x3f8, %dx
+// 	outb %al, %dx
+// 	ret
+
+# u8 sputc(const char* c);
 sputc:
-	mov %dil, %al
+	mov (%rdi), %al
 	mov $0x3f8, %dx
 	outb %al, %dx
+	mov $1, %al
+	mov $1, %ah
 	ret
 
 # void sputs(const char* str);

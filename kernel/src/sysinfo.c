@@ -23,6 +23,11 @@
 		14,
 		15,
 	};
+
+	hpet* hpets;
+	u32 num_hpets;
+
+	u8 timer; // 0: PIT; 1: HPET
 #else
 
 #endif
@@ -41,4 +46,5 @@ void sysinfo_init() {
 	ioapics = vmm_alloc();
 	cpus = vmm_alloc();
 	drives = vmm_alloc();
+	hpets = vmm_alloc();
 }

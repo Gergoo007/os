@@ -20,14 +20,18 @@ extern psf2_hdr _binary_src_font_psf_start;
 extern u8 _binary_src_font_psf_end;
 #define fontend _binary_src_font_psf_end
 
-#define printk(fmt, ...) printf(cputc, cputs, fmt, ##__VA_ARGS__)
+#define printk(fmt, ...) printf(cputu8, cputs, fmt, ##__VA_ARGS__)
 
 #define report(f, ...) _report(f, __FILE_NAME__, ##__VA_ARGS__)
 #define warn(f, ...) _warn(f, __FILE_NAME__, ##__VA_ARGS__)
 #define error(f, ...) _error(f, __FILE_NAME__, ##__VA_ARGS__)
 
+extern u32 con_cx, con_cy;
+extern u32 con_bg, con_fg;
+
 void con_init();
 void cputc(const char c);
+u8 cputu8(const char* unichar);
 void cputs(char* s);
 void _report(const char* fmt, const char* file, ...);
 void _warn(const char* fmt, const char* file, ...);

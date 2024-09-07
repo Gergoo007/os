@@ -2,6 +2,12 @@
 
 #include <acpi/acpi.h>
 
+enum {
+	PCIE_SATA = 0x0106,
+	PCIE_NVM = 0x0108,
+	PCIE_USB = 0x0c03,
+};
+
 typedef struct pci_hdr {
 	u16 vendor;
 	u16 product;
@@ -9,8 +15,13 @@ typedef struct pci_hdr {
 	u16 status;
 	u8 rev_id;
 	u8 prog_if;
-	u8 subclass;
-	u8 class;
+	union {
+		struct {
+			u8 subclass;
+			u8 class;
+		};
+		u16 combclass;
+	};
 	u8 cache_size;
 	u8 latency_timer;
 	u8 hdr_type;

@@ -1,16 +1,23 @@
 #include <pcie/pcie.h>
 #include <pcie/pcie_ids.h>
-
 #include <gfx/console.h>
-
 #include <storage/ahci/ahci.h>
-
 #include <mm/paging.h>
+#include <usb/hci/uhci.h>
 
 void pcie_add_device(pci_hdr* d) {
 	report("Device found (%s), %s:%04x", pci_class(d->class), pci_vendor(d->vendor), d->product);
-	if (d->class == 0x01 && d->subclass == 0x06) {
-		ahci_init(d);
+
+	switch (d->combclass) {
+		case PCIE_SATA:
+			ahci_init(d);
+			break;
+
+		case PCIE_USB:
+			if (d->prog_if == 0x00) {
+				uhci_init(d);
+			}
+			break;
 	}
 }
 

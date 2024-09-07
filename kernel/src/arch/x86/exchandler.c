@@ -1,5 +1,3 @@
-#include <arch/x86/idt.h>
-
 #include <gfx/console.h>
 #include <serial/serial.h>
 
@@ -7,8 +5,13 @@
 #include <mm/pmm.h>
 
 #include <arch/x86/apic/apic.h>
+#include <arch/x86/clocks/pit.h>
+#include <arch/x86/clocks/hpet.h>
+#include <arch/x86/idt.h>
 
 #include <ps2/kbd.h>
+
+#include <sysinfo.h>
 
 #define print_reg(st, reg) printk("%s: %p ", #reg, st->reg)
 #define sprint_reg(st, reg) sprintk("%s: %p ", #reg, st->reg)
@@ -33,11 +36,20 @@ void x86_introutine(cpu_regs* regs) {
 end:
 			// Send EOI to the LAPIC
 			lapic_eoi();
-
 			break;
 		}
-		default: {
-			printk("Int %02x\n", regs->exc);
+
+		case 0x41: {
+			pit_tick++;
+			lapic_eoi();
+			break;
+		}
+
+		case 0x42: {
+			hpet_stop();
+			sleep_done = 1;
+
+			lapic_eoi();
 			break;
 		}
 	}

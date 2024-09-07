@@ -3,6 +3,8 @@
 #include <util/types.h>
 #include <util/attrs.h>
 
+#define DECL_ISR(n) _attr_int void exc##n(int_frame* i)
+
 typedef struct idt_entry {
 	u16 base0;
 	u16 ss;
@@ -49,27 +51,30 @@ typedef struct cpu_regs {
 } cpu_regs;
 
 typedef struct int_frame int_frame;
-_attr_int void exc0(int_frame* i);
-_attr_int void exc1(int_frame* i);
-_attr_int void exc2(int_frame* i);
-_attr_int void exc3(int_frame* i);
-_attr_int void exc4(int_frame* i);
-_attr_int void exc5(int_frame* i);
-_attr_int void exc6(int_frame* i);
-_attr_int void exc7(int_frame* i);
-_attr_int void exc8(int_frame* i);
-_attr_int void exc9(int_frame* i);
-_attr_int void exc10(int_frame* i);
-_attr_int void exc11(int_frame* i);
-_attr_int void exc12(int_frame* i);
-_attr_int void exc13(int_frame* i);
-_attr_int void exc14(int_frame* i);
-_attr_int void exc15(int_frame* i);
-_attr_int void exc16(int_frame* i);
-_attr_int void exc17(int_frame* i);
-_attr_int void exc18(int_frame* i);
-_attr_int void exc19(int_frame* i);
 
-_attr_int void exc64(int_frame* i);
+DECL_ISR(0);
+DECL_ISR(1);
+DECL_ISR(2);
+DECL_ISR(3);
+DECL_ISR(4);
+DECL_ISR(5);
+DECL_ISR(6);
+DECL_ISR(7);
+DECL_ISR(8);
+DECL_ISR(9);
+DECL_ISR(10);
+DECL_ISR(11);
+DECL_ISR(12);
+DECL_ISR(13);
+DECL_ISR(14);
+DECL_ISR(15);
+DECL_ISR(16);
+DECL_ISR(17);
+DECL_ISR(18);
+DECL_ISR(19);
+
+DECL_ISR(64); // KBD
+DECL_ISR(65); // PIT
+DECL_ISR(66); // HPET
 
 void idt_init();

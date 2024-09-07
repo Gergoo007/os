@@ -2,7 +2,7 @@
 #include <util/types.h>
 #include <util/string.h>
 
-void vprintf(void (*putc)(char c),
+void vprintf(u8 (*putc)(const char* c),
 	void (*puts)(char* str),
 	const char* fmt,
 	va_list l
@@ -13,7 +13,8 @@ void vprintf(void (*putc)(char c),
 
 			switch (*fmt) {
 				case 'c':
-					putc((char) va_arg(l, u32));
+					char a = (char) va_arg(l, u32);
+					putc(&a);
 					break;
 
 				case 's':
@@ -49,7 +50,7 @@ void vprintf(void (*putc)(char c),
 					if (*fmt == 's') {
 						char* str = va_arg(l, char*);
 						while (num--) {
-							putc(*(str++));
+							putc(str++);
 						}
 					}
 
@@ -67,7 +68,7 @@ void vprintf(void (*putc)(char c),
 								case 's': {
 									char* str = va_arg(l, char*);
 									while (num--)
-										putc(*(str++));
+										putc(str++);
 									break;
 								}
 
@@ -82,14 +83,14 @@ void vprintf(void (*putc)(char c),
 					}
 				}
 			}
+			fmt++;
 		} else {
-			putc(*fmt);
+			fmt += putc(fmt);
 		}
-		fmt++;
 	}
 }
 
-void printf(void (*putc)(char c),
+void printf(u8 (*putc)(const char* c),
 	void (*puts)(char* str),
 	const char* fmt, ...
 ) {

@@ -41,6 +41,8 @@ void pmm_init(mb_tag* mmap) {
 		if (e->type == MEM_FREE) {
 			pmm_mem_free += e->length;
 
+			if (e->base_addr >= 0x100000000) break;
+
 			if (firstfree || e->base_addr == 0x100000) {
 				// if (e->length < 0x30000) {
 				// 	firstfree = 0;
@@ -59,27 +61,13 @@ void pmm_init(mb_tag* mmap) {
 		}
 	}
 
-	heap_base_phys = 0x40200000;
+	// heap_base_phys = 0x40200000;
 
 	sprintk("%d M RAM\n\r", pmm_mem_all >> 20);
 	sprintk("Heap @ %p size %d M\n\r", heap_base_phys, heap_size >> 20);
 
 	// Heap mappelése
 	if (heap_base_phys < 0x40000000) goto megvan;
-
-	// TODO: kell ez? (az if?)
-	u64 heap_base2m;
-	if (heap_base_phys & 0x1fffff)
-		heap_base2m = heap_base_phys & ~0x1fffff;
-	else
-		heap_base2m = heap_base_phys;
-
-	u64 heap_vaddr = 0xffff800000000000 + heap_base2m;
-	if (cpu_ps_1g()) {
-		
-	} else {
-		
-	}
 
 megvan:
 	heap_base_virt = heap_base_phys | 0xffff800000000000;

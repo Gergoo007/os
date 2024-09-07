@@ -8,6 +8,7 @@
 #include <arch/x86/gdt.h>
 #include <arch/x86/pic.h>
 #include <arch/x86/cpuid.h>
+#include <arch/x86/clocks/pit.h>
 #include <ps2/kbd.h>
 #include <acpi/acpi.h>
 #include <boot/multiboot2.h>
@@ -15,6 +16,10 @@
 #include <userspace/init.h>
 
 extern _attr_noret void khang();
+
+extern u8 cputu8(const char* unichar);
+
+extern u16* unilookup;
 
 _attr_noret void kmain(void* boot_info) {
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
@@ -24,14 +29,14 @@ _attr_noret void kmain(void* boot_info) {
 	cr4 |= (1 << 4);
 	asm volatile ("mov %0, %%cr4" :: "r"(cr4));
 
+	multiboot2_parse(boot_info);
+
 	// Framebuffer előkészítése
 	fb_main.base = FB_VADDR;
 	fb_main.size = 1024*768*4;
 	fb_main.width = 1024;
 	fb_main.height = 768;
 	con_init();
-
-	multiboot2_parse(boot_info);
 
 	printk("Heap %p\n", heap_base_phys);
 
@@ -49,36 +54,39 @@ _attr_noret void kmain(void* boot_info) {
 	rbp |= 0xffff800000000000;
 	asm volatile ("movq %0, %%rsp\nmovq %1, %%rbp" :: "r"(rsp), "r"(rbp));
 
+	unilookup = (u16*)((u64)unilookup | 0xffff800000000000);
+
 	vmm_init();
 
 	gdt_init();
 	idt_init();
 
+	// TODO: ha igazi hw-en nem jó, ezt nem szabad futtatni
 	pic_init();
 
 	sysinfo_init();
 
 	acpi_init(boot_info);
 
+	if (!timer)
+		pit_init();
+	else
+		printk("HPET PIT helyett\n");
+
 	ps2_kbd_init();
 	tss_init();
 
 	userspace_init();
 
-	// *(u8*)0xfffffffffff00000 = 0xff;
+	asm volatile ("sti");
 
-	// foreach(i, num_cpus) {
-	// 	printk("core/thread %d (acpi %d); r %d c %d\n", cpus[i].apic_id, cpus[i].acpi_id, cpus[i].enabled, cpus[i].capable);
-	// }
-
-	// foreach(i, num_drives) {
-	// 	printk("meghajto: %s\n", drives[i].model);
-	// }
+	printk("Sziasztok cigányok\n");
+	sleep(2000);
+	printk("Lejárt! %d\n", timer);
 
 	khang();
 }
 
 _attr_noret void khang() {
-	asm volatile ("sti");
 	while (1) { asm volatile ("hlt"); }
 }

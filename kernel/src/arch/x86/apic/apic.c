@@ -1,8 +1,7 @@
 #include <arch/x86/apic/apic.h>
-
 #include <gfx/console.h>
-
 #include <sysinfo.h>
+#include <serial/serial.h>
 
 void lapic_init() {
 	volatile lapic_regs* l = (volatile lapic_regs*)lapic_base;
@@ -24,6 +23,9 @@ void apic_process_madt(madt* m) {
 		switch (entry->type) {
 			case MADT_IOAPIC: {
 				// printk("ioapic @ %p\n",entry->e_ioapic.ioapic_addr);
+				// IMCR, lehet hogy kell?
+				outb(0x70, 0x22);
+				outb(0x1, 0x23);
 				ioapics[num_ioapics].base = entry->e_ioapic.ioapic_addr | 0xffff800000000000;
 				ioapics[num_ioapics].gsi_base = entry->e_ioapic.gsi_base;
 				ioapics[num_ioapics].id = entry->e_ioapic.ioapic_id;

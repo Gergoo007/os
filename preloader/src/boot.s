@@ -276,8 +276,12 @@ vissza:
 	add %ecx, %edi
 	jmp szabad_e
 
+# TODO: (%edi)-ban van a szabad mem címe, de nem fix
+# hogy 2M aligned, ebben az esetben crash
+# 4K paging kell ide, page table mehet akár ebbe a régióba
 tovabb:
-	mov (%edi), %eax
+	// mov (%edi), %eax
+	mov $0, %eax
 	mov 4(%edi), %ecx
 	or $0b10000011, %eax
 	mov $pd_k, %ebx

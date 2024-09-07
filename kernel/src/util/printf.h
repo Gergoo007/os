@@ -2,12 +2,12 @@
 
 #include <util/types.h>
 
-void printf(void (putc)(char c),
+void printf(u8 (*putc)(const char* c),
 	void (puts)(char* str),
 	const char* fmt, ...
 );
 
-void vprintf(void (putc)(char c),
+void vprintf(u8 (*putc)(const char* c),
 	void (puts)(char* str),
 	const char* fmt,
 	va_list args

@@ -5,6 +5,7 @@
 
 #include <pcie/pcie.h>
 #include <arch/x86/apic/apic.h>
+#include <arch/x86/clocks/hpet.h>
 
 #include <mm/paging.h>
 
@@ -13,6 +14,7 @@
 #include <serial/serial.h>
 
 void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
+	hpet_table* ht;
 	while (entries--) {
 		sdt_hdr* table = quadptrs ? (sdt_hdr*)*(u64*)(list+entries*8) : (sdt_hdr*) (u64)*(u32*)(list+entries*4);
 		MAKE_VIRTUAL(table);
@@ -33,11 +35,18 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 				break;
 			}
 
+			case ACPI_HPET: {
+				ht = (hpet_table*)table;
+				break;
+			}
+
 			default: {
 				report("got %.4s", &table->sign);
 			}
 		}
 	}
+
+	// hpet_init((hpet_table*)ht);
 }
 
 void acpi_xsdt(xsdt* x) {

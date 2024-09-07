@@ -13,5 +13,5 @@ u8 inb(u16 port);
 u16 inw(u16 port);
 u32 inl(u16 port);
 
-void sputc(char c);
+u8 sputc(const char* c);
 void sputs(char* str);
