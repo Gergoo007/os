@@ -6,34 +6,145 @@ bitmap vmm_bm;
 
 #include <gfx/console.h>
 
+#include <serial/serial.h>
+
+#define KHEAP 0xffffc00000000000
+#define KHEAPBM 0xffffb00000000000
+
+vmem* first_link;
+
+bitmap region_bm;
+
+static vmem* new_link() {
+	return first_link + bm_alloc(&region_bm);
+}
+
+static void delete_link(vmem* l) {
+	bm_set(&region_bm, (l - first_link) >> 5, 0);
+}
+
+void vmm_dump() {
+	vmem* m = first_link;
+	sprintk("====================\n\r");
+	while (m) {
+		sprintk("%d; %p byte\n\r", m->sts, m->len);
+		m = m->next;
+	}
+	sprintk("====================\n\r");
+}
+
 void vmm_init() {
-	// vmm_bm.base = (u8*)0xffff800000000000;
-	// // 64 GiB-nyi memóriára elég
-	// vmm_bm.size = 0x200000;
+	for (u32 i = 0; i != 0x200000; i += 0x1000) {
+		map_page(KHEAPBM+i, (u64)pmm_alloc(), 0b11);
+	}
 
-	// // Bitmap mappelése, heap többi része mappelve lesz majd amikor kell
-	// for (u32 i = 0; i < vmm_bm.size; i += 0x1000) {
-	// 	early_map_page(0xffff800000000000 + i, (u64)pmm_alloc(), MAP_KDATA);
-	// }
+	first_link = (void*)KHEAPBM;
+	// Kivonok ~2M-et a kernel meg egyéb fenn nem tartott
+	// használatban lévő memóriáért
+	first_link->len = pmm_mem_free - 0x200000;
+	first_link->sts = 0;
+	first_link->prev = 0;
+	first_link->next = 0;
 
-	// bm_init(&vmm_bm);
+	region_bm.base = vmm_alloc();
+	region_bm.size = 0x1000;
+	bm_init(&region_bm);
 
-	// for (u32 i = 0; i < vmm_bm.size / 0x1000; i += 0x1000) {
-	// 	bm_set(&vmm_bm, i, 1);
-	// }
+	bm_set(&region_bm, 0, 1);
+}
+
+void* kmalloc(u64 bytes) {
+	u64 a = KHEAP;
+	vmem* l = first_link;
+	while (l) {
+		if (l->sts == 0) { // free?
+			// Van szabad hely?
+			if (l->len > bytes) {
+				// Új láncszem készítése
+				vmem* new = new_link();
+				new->prev = l->prev;
+				new->next = l;
+				new->sts = 1;
+				new->len = bytes;
+
+				// Láncszem beillesztése
+				if (l->prev)
+					l->prev->next = new;
+				l->prev = new;
+				l->len -= bytes;
+
+				// Ha ez volt a legelső allocation
+				if (first_link == l)
+					first_link = new;
+			} else if (l->len == bytes) {
+				l->sts = 1;
+			}
+
+			return (void*)a;
+		}
+
+		a += l->len;
+		l = l->next;
+	}
+
+	return 0;
+}
+
+void kfree(void* p) {
+	u64 a = KHEAP;
+	vmem* l = first_link;
+	while (l) {
+		if (a == (u64)p) {
+			// Szabadnak jelölés
+			l->sts = 0;
+
+			// Utána lévő szabad szakasszal
+			// összeolvasztás (l törlése)
+			if (l->next) {
+				if (l->next->sts == 0) {
+					l->next->len += l->len;
+
+					// Láncszem kikerülése (effektíven törlése)
+					if (l->prev)
+						l->prev->next = l->next;
+					if (l->next)
+						l->next->prev = l->prev;
+
+					if (l == first_link)
+						first_link = l->next;
+
+					delete_link(l);
+				}
+			}
+
+			// Előzővel szakasszal való
+			// összeolvasztás (l törlése)
+			if (l->prev) {
+				if (l->prev->sts == 0) {
+					l->prev->len += l->len;
+
+					// Láncszem kikerülése (effektíven törlése)
+					if (l->next)
+						l->next->prev = l->prev;
+					if (l->prev)
+						l->prev->next = l->next;
+
+					delete_link(l);
+				}
+			}
+
+			return;
+		}
+
+		a += l->len;
+		l = l->next;
+	}
+
+	error("free: Érvénytelen pointer!");
 }
 
 void* vmm_alloc() {
-	// void* a = (void*)0xffff800000000000 + bm_alloc(&vmm_bm)*0x1000;
-	// // map_page((u64)a, (u64)pmm_alloc(), MAP_KDATA);
-	// return a;
 	return pmm_alloc() + 0xffff800000000000;
-}
-
-// TODO:
-void* vmm_reserve() {
-	// return (void*)0xffff800000000000 + bm_alloc(&vmm_bm)*0x1000;
-	return 0;
 }
 
 void vmm_free(void* a) {

@@ -1,4 +1,5 @@
 #include <acpi/acpi.h>
+#include <acpi/lai/core.h>
 
 #include <gfx/console.h>
 #include <util/string.h>
@@ -13,7 +14,37 @@
 
 #include <serial/serial.h>
 
+static void* _list;
+static u32 _entries;
+static bool _quadptrs;
+
+void* laihost_scan(const char* othersig, size_t index) {
+	u32 lentries = _entries;
+	u32 sig = *(u32*)othersig;
+
+	while (lentries--) {
+		sdt_hdr* table = _quadptrs ? (sdt_hdr*)*(u64*)(_list+lentries*8) : (sdt_hdr*) (u64)*(u32*)(_list+lentries*4);
+		MAKE_VIRTUAL(table);
+
+		if (table->sign == sig) {
+			if (index == 0) {
+				return table;
+			} else {
+				index--;
+			}
+		} else if (table->sign == ACPI_FACP && sig == ACPI_DSDT) {
+			void* dsdt = (void*) (*(u64*)((u64)table+140) | 0xffff800000000000);
+			return dsdt;
+		}
+	}
+
+	return 0;
+}
+
 void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
+	_list = list;
+	_entries = entries;
+
 	hpet_table* ht;
 	while (entries--) {
 		sdt_hdr* table = quadptrs ? (sdt_hdr*)*(u64*)(list+entries*8) : (sdt_hdr*) (u64)*(u32*)(list+entries*4);
@@ -32,6 +63,7 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 
 			case ACPI_FACP: {
 				// fadt* f = (fadt*)table;
+				
 				break;
 			}
 
@@ -41,7 +73,7 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 			}
 
 			default: {
-				report("got %.4s", &table->sign);
+				break;
 			}
 		}
 	}
@@ -84,8 +116,14 @@ void acpi_init(void* boot_info) {
 	}
 
 	printk("oem %.6s\n", r->oem);
+
 	if (x)
 		acpi_xsdt((xsdt*)r->xsdt);
 	else
 		acpi_rsdt((rsdt*)(u64)r->rsdt);
+
+	lai_set_acpi_revision(r->rev);
+	lai_create_namespace();
+	
+	
 }

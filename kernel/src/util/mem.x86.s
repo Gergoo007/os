@@ -1,5 +1,6 @@
 .global memset
 .global memcpy
+.global memcmp
 .global memset_aligned
 .global memcpy_aligned
 
@@ -12,13 +13,29 @@ memset:
 	rep stosb
 	ret
 
-# %rdi: innen
-# %rsi: amoda
+# %rdi: amoda
+# %rsi: innen
 # %rdx: ennyit
 memcpy:
-	xchg %rdi, %rsi
 	mov %rdx, %rcx
 	rep movsb
+	ret
+
+# %rdi: lhs
+# %rsi: rhs
+# %rdx: ennyit
+memcmp:
+	mov %rdx, %rcx
+	repz cmpsb
+	jz .egyezik
+	jg .nagyobb
+	movl $0xffffffff, %eax
+	ret
+.egyezik:
+	xor %eax, %eax
+	ret
+.nagyobb:
+	movl $1, %eax
 	ret
 
 #

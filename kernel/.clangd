@@ -1,2 +1,2 @@
 CompileFlags:
-  Add: [ -I/mnt/et_cetera/projects/Arzene/kernel/src, -xc, -std=gnu23, -Wall, -Wextra, -Wshadow, -Wno-address-of-packed-member, -Wno-incompatible-library-redeclaration, -Wno-unused-parameter, -Wno-main-return-type, -nostdinc, -nostdlib ]
+  Add: [ -I/mnt/et_cetera/projects/Arzene/kernel/src, -xc, -std=gnu23, -Wall, -Wextra, -Wshadow, -Wno-unused-function, -Wno-address-of-packed-member, -Wno-incompatible-library-redeclaration, -Wno-unused-parameter, -Wno-main-return-type, -nostdinc, -nostdlib ]

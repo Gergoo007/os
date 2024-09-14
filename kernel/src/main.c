@@ -14,12 +14,15 @@
 #include <boot/multiboot2.h>
 #include <sysinfo.h>
 #include <userspace/init.h>
+#include <util/mem.h>
 
 extern _attr_noret void khang();
 
 extern u8 cputu8(const char* unichar);
 
 extern u16* unilookup;
+
+extern void vmm_dump();
 
 _attr_noret void kmain(void* boot_info) {
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
@@ -79,10 +82,6 @@ _attr_noret void kmain(void* boot_info) {
 	userspace_init();
 
 	asm volatile ("sti");
-
-	printk("Sziasztok cigányok\n");
-	sleep(2000);
-	printk("Lejárt! %d\n", timer);
 
 	khang();
 }

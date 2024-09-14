@@ -37,6 +37,7 @@ void pmm_init(mb_tag* mmap) {
 	// A preloader az első szabad helyre rakja a kernelt
 	u8 firstfree = 1;
 	for (entry* e = (entry*)(mmap+2); num_ents; e++, num_ents--) {
+		sprintk("%d: %p - %p\n\r", e->type, e->base_addr, e->base_addr+e->length);
 		pmm_mem_all += e->length;
 		if (e->type == MEM_FREE) {
 			pmm_mem_free += e->length;
@@ -49,7 +50,7 @@ void pmm_init(mb_tag* mmap) {
 				// 	continue;
 				// }
 
-				heap_base_phys = e->base_addr + 0x30000;
+				heap_base_phys = e->base_addr + 0x60000;
 				heap_size = e->length;
 				firstfree = 0;
 			}

@@ -18,6 +18,8 @@
 
 u8 key_release = 0;
 
+extern void* d;
+
 void x86_introutine(cpu_regs* regs) {
 	switch (regs->exc) {
 		case 0x40: {
@@ -51,6 +53,20 @@ end:
 
 			lapic_eoi();
 			break;
+		}
+
+		case 0x0e: {
+			// A heapen történt a #PF
+			if (regs->cr2 >= 0xffffc00000000000 && regs->cr2 < 0xfffff00000000000) {
+				map_page(regs->cr2, (u64)pmm_alloc(), 0b11);
+				return;
+			}
+
+			// A vmm bitmapje
+			if (regs->cr2 >= 0xffffb00000000000 && regs->cr2 < 0xffffc00000000000) {
+				map_page(regs->cr2, (u64)pmm_alloc(), 0b11);
+				return;
+			}
 		}
 	}
 

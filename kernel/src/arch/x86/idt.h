@@ -42,6 +42,7 @@ typedef struct cpu_regs {
 	u64 rbx;
 	u64 rax;
 	u64 exc;
+	u64 rflexc;
 	u64 err;
 	u64 rip;
 	u64 cs;
