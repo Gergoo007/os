@@ -9,6 +9,9 @@
 #include <arch/x86/clocks/hpet.h>
 #include <arch/x86/idt.h>
 
+#include <acpi/lai/helpers/sci.h>
+#include <acpi/lai/helpers/pm.h>
+
 #include <ps2/kbd.h>
 
 #include <sysinfo.h>
@@ -43,6 +46,7 @@ end:
 
 		case 0x41: {
 			pit_tick++;
+			// error("pit tick");
 			lapic_eoi();
 			break;
 		}
@@ -55,16 +59,30 @@ end:
 			break;
 		}
 
+		case 0x43: {
+			u16 events = lai_get_sci_event();
+			if (events & (1 << 8)) {
+				printk("Bekapcsoló gomb benyomva, kikapcs...\n");
+				lai_enter_sleep(5);
+			}
+			lapic_eoi();
+			break;
+		}
+
 		case 0x0e: {
 			// A heapen történt a #PF
 			if (regs->cr2 >= 0xffffc00000000000 && regs->cr2 < 0xfffff00000000000) {
 				map_page(regs->cr2, (u64)pmm_alloc(), 0b11);
+				u64 r = 0;
+				asm volatile ("movq %0, %%cr2" :: "r"(r));
 				return;
 			}
 
 			// A vmm bitmapje
 			if (regs->cr2 >= 0xffffb00000000000 && regs->cr2 < 0xffffc00000000000) {
 				map_page(regs->cr2, (u64)pmm_alloc(), 0b11);
+				u64 r = 0;
+				asm volatile ("movq %0, %%cr2" :: "r"(r));
 				return;
 			}
 		}

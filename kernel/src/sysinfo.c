@@ -27,7 +27,8 @@
 	hpet* hpets;
 	u32 num_hpets;
 
-	u8 timer; // 0: PIT; 1: HPET
+	u8 timer; // 0: PIT; 1: HPET; 2: ACPI PM
+	u8 pm_timer_present;
 #else
 
 #endif

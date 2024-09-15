@@ -3,7 +3,7 @@
 
 static ioapic* find_ioapic(u32 gsi) {
 	for (u32 i = 0; i < num_ioapics; i++) {
-		if (gsi > ioapics[i].gsi_base && gsi < ioapics[i].gsi_base+24)
+		if (gsi >= ioapics[i].gsi_base && gsi < ioapics[i].gsi_base+24)
 			return &ioapics[i];
 	}
 	return 0;
@@ -45,4 +45,11 @@ void ioapic_set_vector(u32 gsi, u8 v) {
 	ioapic_entry e = { .lower = ioapic_read(a, 0x10 + gsi * 2) };
 	e.vector = v;
 	ioapic_write(a, 0x10 + gsi * 2, e.lower);
+}
+
+void ioapic_set_destination(u32 gsi, u8 logical, u8 dest) {
+	ioapic* a = find_ioapic(gsi);
+	ioapic_entry e = { .lower = ioapic_read(a, 0x10 + gsi * 2) };
+	e.destination_logical = 0;
+	e.destination = 0;
 }

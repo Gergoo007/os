@@ -9,6 +9,7 @@
 #include <arch/x86/pic.h>
 #include <arch/x86/cpuid.h>
 #include <arch/x86/clocks/pit.h>
+#include <arch/x86/clocks/tsc.h>
 #include <ps2/kbd.h>
 #include <acpi/acpi.h>
 #include <boot/multiboot2.h>
@@ -22,7 +23,7 @@ extern u8 cputu8(const char* unichar);
 
 extern u16* unilookup;
 
-extern void vmm_dump();
+extern void laihost_sleep(u64 a);
 
 _attr_noret void kmain(void* boot_info) {
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
@@ -33,6 +34,9 @@ _attr_noret void kmain(void* boot_info) {
 	asm volatile ("mov %0, %%cr4" :: "r"(cr4));
 
 	multiboot2_parse(boot_info);
+
+	// TODO: ha igazi hw-en nem jó, ezt nem szabad futtatni
+	pic_init();
 
 	// Framebuffer előkészítése
 	fb_main.base = FB_VADDR;
@@ -64,17 +68,20 @@ _attr_noret void kmain(void* boot_info) {
 	gdt_init();
 	idt_init();
 
-	// TODO: ha igazi hw-en nem jó, ezt nem szabad futtatni
-	pic_init();
-
 	sysinfo_init();
 
 	acpi_init(boot_info);
 
-	if (!timer)
-		pit_init();
-	else
-		printk("HPET PIT helyett\n");
+	// if (!timer)
+	pit_init();
+	// else
+	// 	printk("HPET PIT helyett\n");
+
+	// printk("ioapic base %p\n", ioapics[0].base);
+	// u64 redir = ioapic_get_entry(2).raw;
+	// printk("redir ent 2 %p\n", redir);
+
+	while (1);
 
 	ps2_kbd_init();
 	tss_init();

@@ -40,6 +40,12 @@ void idt_init() {
 	idt_add_entry(0x40, (u64)exc64, 0b1110);
 	idt_add_entry(0x41, (u64)exc65, 0b1110);
 	idt_add_entry(0x42, (u64)exc66, 0b1110);
+	idt_add_entry(0x43, (u64)exc67, 0b1110);
+	idt_add_entry(0x44, (u64)exc68, 0b1110);
+	idt_add_entry(0x45, (u64)exc69, 0b1110);
+	idt_add_entry(0x46, (u64)exc70, 0b1110);
+	idt_add_entry(0x47, (u64)exc71, 0b1110);
+	idt_add_entry(0x48, (u64)exc72, 0b1110);
 
 	asm volatile ("lidt %0" :: "m"((idtr) {
 		.address = idt,

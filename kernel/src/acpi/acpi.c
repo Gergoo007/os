@@ -1,5 +1,7 @@
 #include <acpi/acpi.h>
 #include <acpi/lai/core.h>
+#include <acpi/lai/helpers/sci.h>
+#include <acpi/lai/helpers/pm.h>
 
 #include <gfx/console.h>
 #include <util/string.h>
@@ -7,6 +9,7 @@
 #include <pcie/pcie.h>
 #include <arch/x86/apic/apic.h>
 #include <arch/x86/clocks/hpet.h>
+#include <arch/x86/clocks/tsc.h>
 
 #include <mm/paging.h>
 
@@ -17,6 +20,73 @@
 static void* _list;
 static u32 _entries;
 static bool _quadptrs;
+
+fadt* f;
+
+void gas_write(gas* a, u64 val, u32 size) {
+	if (a->access_size)
+		if (size != (1 << (a->access_size-1)))
+			error("gas: size (%d) != access_size (%d)", size, a->access_size);
+
+	if (a->addr_space == GAS_IO) {
+		if (size == 8) {
+			outl(val, a->address);
+			outl(val>>32, a->address+4);
+		} else if (size == 4) {
+			outl(val, a->address);
+		} else if (size == 2) {
+			outw(val, a->address);
+		} else if (size == 1) {
+			outb(val, a->address);
+		}
+	} else if (a->addr_space == GAS_MMIO) {
+		if (size == 8) {
+			*(volatile u64*)a->address = val;
+		} else if (size == 4) {
+			*(volatile u32*)a->address = val;
+		} else if (size == 2) {
+			*(volatile u16*)a->address = val;
+		} else if (size == 1) {
+			*(volatile u8*)a->address = val;
+		}
+	} else {
+		error("Ismeretlen GAS címtér: %d", a->addr_space);
+	}
+}
+
+u64 gas_read(gas* a, u32 size) {
+	if (a->access_size)
+		if (size != (1 << (a->access_size-1)))
+			error("gas: size (%d) != access_size (%d)", size, a->access_size);
+
+	if (a->addr_space == GAS_IO) {
+		if (size == 8) {
+			u64 val = 0;
+			val = inl(a->address);
+			val |= (u64)inl(a->address+4) << 32;
+			return val;
+		} else if (size == 4) {
+			return inl(a->address);
+		} else if (size == 2) {
+			return inw(a->address);
+		} else if (size == 1) {
+			return inb(a->address);
+		}
+	} else if (a->addr_space == GAS_MMIO) {
+		if (size == 8) {
+			return *(volatile u64*)a->address;
+		} else if (size == 4) {
+			return *(volatile u32*)a->address;
+		} else if (size == 2) {
+			return *(volatile u16*)a->address;
+		} else if (size == 1) {
+			return *(volatile u8*)a->address;
+		}
+	} else {
+		error("Ismeretlen GAS címtér: %d", a->addr_space);
+	}
+	return 0;
+}
 
 void* laihost_scan(const char* othersig, size_t index) {
 	u32 lentries = _entries;
@@ -41,6 +111,21 @@ void* laihost_scan(const char* othersig, size_t index) {
 	return 0;
 }
 
+u32 acpi_read_timer() {
+	if (f->x_pm_timer.address)
+		return gas_read32(&f->x_pm_timer);
+	else if (f->pm_timer)
+		return inl(f->pm_timer);
+	return 0;
+}
+
+static void process_fadt(fadt* _f) {
+	f = _f;
+	if (f->x_pm_timer.address || f->pm_timer) {
+		pm_timer_present = 1;
+	}
+}
+
 void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 	_list = list;
 	_entries = entries;
@@ -62,13 +147,17 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 			}
 
 			case ACPI_FACP: {
-				// fadt* f = (fadt*)table;
-				
+				process_fadt((fadt*)table);
 				break;
 			}
 
 			case ACPI_HPET: {
 				ht = (hpet_table*)table;
+				break;
+			}
+
+			case ACPI_ECDT: {
+				report("embedded ctrl..\n");
 				break;
 			}
 
@@ -124,6 +213,16 @@ void acpi_init(void* boot_info) {
 
 	lai_set_acpi_revision(r->rev);
 	lai_create_namespace();
-	
-	
+
+	lai_enable_acpi(1);
+
+	// bit 8 & 9
+	lai_set_sci_event(0x300);
+
+	ioapic_entry e = { .raw = 0, };
+	e.vector = 0x43;
+	ioapic_write_entry(f->sci_int, e);
+	lai_get_sci_event();
+
+	tsc_configure_using_acpi();
 }

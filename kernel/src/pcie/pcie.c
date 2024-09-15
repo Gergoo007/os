@@ -4,6 +4,9 @@
 #include <storage/ahci/ahci.h>
 #include <mm/paging.h>
 #include <usb/hci/uhci.h>
+#include <serial/serial.h>
+
+mcfg* m;
 
 void pcie_add_device(pci_hdr* d) {
 	report("Device found (%s), %s:%04x", pci_class(d->class), pci_vendor(d->vendor), d->product);
@@ -21,7 +24,8 @@ void pcie_add_device(pci_hdr* d) {
 	}
 }
 
-void pcie_init(mcfg* m) {
+void pcie_init(mcfg* _m) {
+	m = _m;
 	u32 num_config_spaces = (m->h.len - (sizeof(mcfg))) / 16;
 
 	foreach (i, num_config_spaces) {
@@ -48,25 +52,49 @@ void pcie_init(mcfg* m) {
 }
 
 void laihost_pci_writeb(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint8_t val) {
-	error("LAI HOST UNIMPL");
+	volatile u8* addr = (void*)
+		(m->config_spaces[0].base + (bus << 20) + (slot << 15) + (fun << 12)) + offset;
+	MAKE_VIRTUAL(addr);
+
+	*addr = val;
 }
 
 void laihost_pci_writew(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint16_t val) {
-	error("LAI HOST UNIMPL");
+	volatile u16* addr = (void*)
+		(m->config_spaces[0].base + (bus << 20) + (slot << 15) + (fun << 12)) + offset;
+	MAKE_VIRTUAL(addr);
+
+	*addr = val;
 }
 
 void laihost_pci_writed(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint32_t val) {
-	error("LAI HOST UNIMPL");
+	volatile u32* addr = (void*)
+		(m->config_spaces[0].base + (bus << 20) + (slot << 15) + (fun << 12)) + offset;
+	MAKE_VIRTUAL(addr);
+
+	*addr = val;
 }
 
 uint8_t laihost_pci_readb(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset) {
-	error("LAI HOST UNIMPL");
+	volatile u8* addr = (void*)
+		(m->config_spaces[0].base + (bus << 20) + (slot << 15) + (fun << 12)) + offset;
+	MAKE_VIRTUAL(addr);
+
+	return *addr;
 }
 
 uint16_t laihost_pci_readw(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset) {
-	error("LAI HOST UNIMPL");
+	volatile u16* addr = (void*)
+		(m->config_spaces[0].base + (bus << 20) + (slot << 15) + (fun << 12)) + offset;
+	MAKE_VIRTUAL(addr);
+
+	return *addr;
 }
 
 uint32_t laihost_pci_readd(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset) {
-	error("LAI HOST UNIMPL");
+	volatile u32* addr = (void*)
+		(m->config_spaces[0].base + (bus << 20) + (slot << 15) + (fun << 12)) + offset;
+	MAKE_VIRTUAL(addr);
+
+	return *addr;
 }

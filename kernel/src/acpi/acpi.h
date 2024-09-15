@@ -14,6 +14,7 @@
 		ACPI_DSDT = 'TDSD',
 		ACPI_XSDT = 'TDSX',
 		ACPI_RSDT = 'TDSR',
+		ACPI_ECDT = 'TDCE',
 	};
 #else
 	enum {
@@ -26,6 +27,7 @@
 		ACPI_DSDT = 'DSDT',
 		ACPI_XSDT = 'XSDT',
 		ACPI_RSDT = 'RSDT',
+		ACPI_ECDT = 'ECDT',
 	};
 #endif
 
@@ -41,11 +43,16 @@ typedef struct _attr_packed sdt_hdr {
 	u32 creator_rev;
 } sdt_hdr;
 
+enum {
+	GAS_MMIO = 0,
+	GAS_IO = 1,
+};
+
 typedef struct _attr_packed gas {
 	u8 addr_space; // 0 - sys mem, 1 - io mem
 	u8 reg_bit_width;
 	u8 reg_bit_offset;
-	u8 : 8;
+	u8 access_size;
 	u64 address;
 } gas;
 
@@ -159,13 +166,62 @@ typedef struct _attr_packed madt {
 typedef struct _attr_packed fadt {
 	sdt_hdr h;
 
-	u32 fw_ctrl;
+	u32 fw_ctl;
 	u32 dsdt;
 	u8 : 8;
 	u8 preferred_pm_prof;
 	u16 sci_int;
 	u32 smi_cmd_port;
 	u8 acpi_enable;
+	u8 acpi_disable;
+	u8 s4bios_req;
+	u8 pstate_cnt;
+	u32 pm1a_evt_blk;
+	u32 pm1b_evt_blk;
+	u32 pm1a_ctl_blk;
+	u32 pm1b_ctl_blk;
+	u32 pm2_ctl_blk;
+	u32 pm_timer;
+	u32 gpe0;
+	u32 gpe1;
+	u32 : 24;
+	u8 pm_timer_bytes;
+	u8 r0[20];
+	union _attr_packed {
+		struct _attr_packed {
+			u8 wbinvd : 1;
+			u8 wbinvd_flush : 1;
+			u8 proc_c1 : 1;
+			u8 p_lvl2_up : 1;
+			u8 power_btn : 1;
+			u8 sleep_btn : 1;
+			u8 fix_rtc : 1;
+			u8 rtc_s4 : 1;
+			u8 tmr_val_ext : 1;
+			u8 dck_cap : 1;
+			u8 reset_reg_sup : 1;
+			u8 sealed_case : 1;
+			u8 headless : 1;
+			u8 cpu_sw_slp : 1;
+			u8 pci_exp_wak : 1;
+		};
+		u32 raw;
+	} flags;
+	u8 r1[15];
+	u8 fadt_minor;
+	u64 x_fw_ctl;
+	u64 x_dsdt;
+	gas x_pm1a_evt_blk;
+	gas x_pm1b_evt_blk;
+	gas x_pm1a_ctl_blk;
+	gas x_pm1b_ctl_blk;
+	gas x_pm2_ctl_blk;
+	gas x_pm_timer;
+	gas x_gpe0;
+	gas x_gpe1;
+	gas sleep_ctl;
+	gas sleep_sts;
+	char hypervisor_id[8];
 } fadt;
 
 typedef struct _attr_packed hpet_table {
@@ -183,6 +239,19 @@ typedef struct _attr_packed hpet_table {
 	u8 page_prot;
 } hpet_table;
 
+#define gas_write8(a, v) gas_write(a, v, 1)
+#define gas_write16(a, v) gas_write(a, v, 2)
+#define gas_write32(a, v) gas_write(a, v, 4)
+#define gas_write64(a, v) gas_write(a, v, 8)
+
+#define gas_read8(a) gas_read(a, 1)
+#define gas_read16(a) gas_read(a, 2)
+#define gas_read32(a) gas_read(a, 4)
+#define gas_read64(a) gas_read(a, 8)
+
 void acpi_init(void* boot_info);
 void acpi_rsdt(rsdt* r);
 void acpi_xsdt(xsdt* x);
+u32 acpi_read_timer();
+void gas_write(gas* a, u64 val, u32 size);
+u64 gas_read(gas* a, u32 size);

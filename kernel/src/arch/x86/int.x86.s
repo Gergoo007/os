@@ -38,7 +38,7 @@ DECLRISR_NOFLAG 10, 14
 DECLRISR 15, 19
 
 # Megszakítások
-DECLRISR 64, 66
+DECLRISR 64, 72
 
 .extern x86_introutine
 

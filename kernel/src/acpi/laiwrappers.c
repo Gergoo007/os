@@ -3,6 +3,8 @@
 #include <gfx/console.h>
 #include <serial/serial.h>
 #include <acpi/lai/core.h>
+#include <acpi/acpi.h>
+#include <arch/x86/clocks/tsc.h>
 
 void laihost_free(void* a, size_t s) {
 	// printk("freeing %p\n", a);
@@ -34,7 +36,7 @@ _attr_noret void laihost_panic(const char* fmt) {
 }
 
 void laihost_log(int lvl, const char* fmt) {
-	if (lvl != LAI_DEBUG_LOG)
+	if (lvl != LAI_DEBUG_LOG && lvl != LAI_WARN_LOG)
 		printk("LAI [%d]: %s\n", lvl, fmt);
 }
 
@@ -70,8 +72,8 @@ u32 laihost_ind(u16 port) {
 	return inl(port);
 }
 
-void laihost_sleep(u64 t) {
-	error("sleep");
+void laihost_sleep(u64 ms) {
+	tsc_sleep(ms * 1000000);
 }
 
 // laihost_pci*: pcie/pcie.c

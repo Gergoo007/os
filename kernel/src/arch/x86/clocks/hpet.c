@@ -69,7 +69,7 @@ void hpet_init(hpet_table* h) {
 	// printk("counter %d\n", hr->counter_val);
 
 	// report("HPET megfelel, GSI %d", gsi);
-	timer = 1;
+	// timer = 1;
 }
 
 void hpet_start(u64 comparator) {

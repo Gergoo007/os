@@ -18,6 +18,7 @@ extern hpet* hpets;
 extern u32 num_hpets;
 
 extern u8 timer; // 0: PIT; 1: HPET
+extern u8 pm_timer_present;
 
 #else
 
