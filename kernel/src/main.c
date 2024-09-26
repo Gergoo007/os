@@ -18,14 +18,18 @@
 #include <util/mem.h>
 
 extern _attr_noret void khang();
-
-extern u8 cputu8(const char* unichar);
-
 extern u16* unilookup;
 
-extern void laihost_sleep(u64 a);
+// TODO: Allocate MMIO pages using PAT
+// TODO: normális pci_write/read functionok
+// TODO: Egyesített sleep function
+// TODO: AVX memset
+// TODO: Serial -> arch/x86
+// TODO: Serial-ba nem írni míg (inb(PORT + 5) & 0x20) == 0
 
 _attr_noret void kmain(void* boot_info) {
+	// asm volatile ("outw %0, %1" :: "a"((u16)0x8A00), "d"((u16)0x8A00));
+
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
 
 	u64 cr4;
@@ -70,18 +74,18 @@ _attr_noret void kmain(void* boot_info) {
 
 	sysinfo_init();
 
+	pit_init();
+
 	acpi_init(boot_info);
 
 	// if (!timer)
-	pit_init();
+	// pit_init();
 	// else
 	// 	printk("HPET PIT helyett\n");
 
 	// printk("ioapic base %p\n", ioapics[0].base);
 	// u64 redir = ioapic_get_entry(2).raw;
 	// printk("redir ent 2 %p\n", redir);
-
-	while (1);
 
 	ps2_kbd_init();
 	tss_init();

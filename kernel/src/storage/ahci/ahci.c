@@ -25,7 +25,7 @@ void ahci_start_cmds(hba_port* port) {
 }
 
 void ahci_init(pci_hdr* pci) {
-	hba_mem* regs = (hba_mem*)((u64)pci->type0.bar5 | 0xffff800000000000);
+	hba_mem* regs = (hba_mem*)(pci_bar_addr(pci, 5) | 0xffff800000000000);
 
 	for (u32 port = 0; port < 32; port++) {
 		// Port nincs jelen a kontrollerben

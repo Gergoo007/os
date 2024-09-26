@@ -22,10 +22,10 @@ enum {
 #define ADDR_PDPI(a) ((((u64)a) >> 30ULL) & 511ULL)
 #define ADDR_PML4I(a) ((((u64)a) >> 39ULL) & 511ULL)
 
-#define MAKE_VIRTUAL(addr) (addr = (typeof(addr))((u64)addr | 0xffff800000000000))
-#define VIRTUAL(addr) ((typeof(addr)) ((u64)addr | 0xffff800000000000))
-#define PHYSICAL(addr) ((typeof(addr)) ((u64)addr & ~0xffff800000000000))
-#define MAKE_PHYSICAL(addr) (addr = (typeof(addr))((u64)addr & ~0xffff800000000000))
+#define MAKE_VIRTUAL(addr) (addr = (typeof(addr))((u64)(addr) | 0xffff800000000000))
+#define VIRTUAL(addr) ((typeof(addr)) ((u64)(addr) | 0xffff800000000000))
+#define PHYSICAL(addr) ((typeof(addr)) ((u64)(addr) & ~0xffff800000000000))
+#define MAKE_PHYSICAL(addr) (addr = (typeof(addr))((u64)(addr) & ~0xffff800000000000))
 
 typedef struct _attr_packed page_table_entry {
 	union {

@@ -1,3 +1,6 @@
+# Disable idiotic invisible default variables like CC
+MAKEFLAGS += --no-builtin-variables
+
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
 CSRCS := $(subst src/,,$(call rwildcard,src,*.c))
@@ -8,29 +11,33 @@ SOBJS := $(patsubst %.s,out/%.s.o,$(SSRCS))
 
 _CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
 	-Isrc -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
-	-Wno-unused-parameter -fno-stack-protector -O0 -g \
-	-Wno-multichar
+	-Wno-unused-parameter -fno-stack-protector -mno-red-zone -O0 -g -Wno-multichar \
+	# no-red-zone: painful addition
 ASFLAGS :=
 LDFLAGS := -T ldscript -z max-page-size=0x1000
+
+CC ?= gcc
+LD ?= ld.gold
+AS ?= as
 
 kernel: clean
 	@$(MAKE) --no-print-directory link
 
 link: $(SOBJS) $(COBJS) out/font.o
 	@echo "  > $(LD) $@"
-	@ld.gold $(LDFLAGS) out/*.o -o out/kernel
+	@$(LD) $(LDFLAGS) out/*.o -o out/kernel
 
 out/%.c.o: src/%.c
 	@echo "  > $(CC) $^"
-	@gcc $(_CFLAGS) -c $^ -o out/$(notdir $@)
+	@$(CC) $(_CFLAGS) -c $^ -o out/$(notdir $@)
 
 out/%.s.o: src/%.s
 	@echo "  > $(AS) $^"
-	@as $(ASFLAGS) -c $^ -o out/$(notdir $@)
+	@$(AS) $(ASFLAGS) -c $^ -o out/$(notdir $@)
 
 out/font.o: src/font.psf
 	@echo "  > $(LD) $^"
-	@ld.gold -r -b binary $^ -o $@
+	@$(LD) -r -b binary $^ -o $@
 
 clean:
 	@rm -rf out

@@ -50,7 +50,7 @@ void ps2_kbd_init() {
 	// scancode készlet 3
 	outb(PS2_KBD_SCANCODE, PS2_DATA);
 	while (inb(PS2_STS) & 2);
-	if (inb(PS2_DATA) != 0xfa) error("Varatlan PS/2 valasz!");
+	if (inb(PS2_DATA) != 0xfa) warn("Varatlan PS/2 valasz! (0)");
 	outb(3, PS2_DATA);
 	while (inb(PS2_STS) & 2);
 
@@ -58,10 +58,10 @@ void ps2_kbd_init() {
 	u8 current_set;
 	outb(PS2_KBD_SCANCODE, PS2_DATA);
 	while (inb(PS2_STS) & 2);
-	if (inb(PS2_DATA) != 0xfa) error("Varatlan PS/2 valasz!");
+	if (inb(PS2_DATA) != 0xfa) warn("Varatlan PS/2 valasz! (1)");
 	outb(0, PS2_DATA);
 	while (inb(PS2_STS) & 2);
-	if (inb(PS2_DATA) != 0xfa) error("Varatlan PS/2 valasz!");
+	if (inb(PS2_DATA) != 0xfa) warn("Varatlan PS/2 valasz! (2)");
 
 	current_set = inb(PS2_DATA);
 	// Ha ACK-ot olvastam be, akkor a következő olvasás lesz talán az adat
@@ -71,7 +71,7 @@ void ps2_kbd_init() {
 	// Ha 10-edjére is csak zöldséget mond akkor nem kell driver
 	tries = 10;
 	while (tries--) {
-		if (current_set != 0x3f && current_set != 0x03)
+		if (current_set != 0x3f && current_set != 0x03 && current_set != 0xfa)
 			current_set = inb(PS2_DATA);
 		else
 			goto proceed;
@@ -80,12 +80,12 @@ void ps2_kbd_init() {
 	return;
 
 proceed:
+	ioapic_set_vector(ioapic_irqs[1], 0x40);
+	ioapic_set_mask(ioapic_irqs[1], 0);
+
 	inb(PS2_DATA);
 
 	sti();
-
-	ioapic_set_vector(ioapic_irqs[1], 0x40);
-	ioapic_set_mask(ioapic_irqs[1], 0);
 }
 
 char ps2_kbd_convert(u8 scancode) {

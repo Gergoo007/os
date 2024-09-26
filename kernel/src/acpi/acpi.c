@@ -6,7 +6,7 @@
 #include <gfx/console.h>
 #include <util/string.h>
 
-#include <pcie/pcie.h>
+#include <pci/pci.h>
 #include <arch/x86/apic/apic.h>
 #include <arch/x86/clocks/hpet.h>
 #include <arch/x86/clocks/tsc.h>
@@ -21,7 +21,8 @@ static void* _list;
 static u32 _entries;
 static bool _quadptrs;
 
-fadt* f;
+u8 fadt_extended_addresses = 0;
+static fadt* f;
 
 void gas_write(gas* a, u64 val, u32 size) {
 	if (a->access_size)
@@ -91,6 +92,13 @@ u64 gas_read(gas* a, u32 size) {
 void* laihost_scan(const char* othersig, size_t index) {
 	u32 lentries = _entries;
 	u32 sig = *(u32*)othersig;
+	if (sig == ACPI_DSDT) {
+		if (f->x_dsdt && fadt_extended_addresses) {
+			return (void*)VIRTUAL(f->x_dsdt);
+		} else {
+			return (void*)VIRTUAL((u64)f->dsdt);
+		}
+	}
 
 	while (lentries--) {
 		sdt_hdr* table = _quadptrs ? (sdt_hdr*)*(u64*)(_list+lentries*8) : (sdt_hdr*) (u64)*(u32*)(_list+lentries*4);
@@ -102,9 +110,6 @@ void* laihost_scan(const char* othersig, size_t index) {
 			} else {
 				index--;
 			}
-		} else if (table->sign == ACPI_FACP && sig == ACPI_DSDT) {
-			void* dsdt = (void*) (*(u64*)((u64)table+140) | 0xffff800000000000);
-			return dsdt;
 		}
 	}
 
@@ -112,15 +117,16 @@ void* laihost_scan(const char* othersig, size_t index) {
 }
 
 u32 acpi_read_timer() {
-	if (f->x_pm_timer.address)
+	if (f->x_pm_timer.address && fadt_extended_addresses)
 		return gas_read32(&f->x_pm_timer);
 	else if (f->pm_timer)
 		return inl(f->pm_timer);
+	else
+		error("Nincs ACPI timer!");
 	return 0;
 }
 
-static void process_fadt(fadt* _f) {
-	f = _f;
+static void process_fadt() {
 	if (f->x_pm_timer.address || f->pm_timer) {
 		pm_timer_present = 1;
 	}
@@ -130,24 +136,28 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 	_list = list;
 	_entries = entries;
 
-	hpet_table* ht;
+	hpet_table* ht = 0;
+	mc = 0;
+	madt* ma = 0;
 	while (entries--) {
 		sdt_hdr* table = quadptrs ? (sdt_hdr*)*(u64*)(list+entries*8) : (sdt_hdr*) (u64)*(u32*)(list+entries*4);
 		MAKE_VIRTUAL(table);
 
 		switch (table->sign) {
 			case ACPI_MCFG: {
-				pcie_init((mcfg*)table);
+				mc = (mcfg*)table;
 				break;
 			}
 
 			case ACPI_APIC: {
-				apic_process_madt((madt*)table);
+				ma = (madt*)table;
 				break;
 			}
 
 			case ACPI_FACP: {
-				process_fadt((fadt*)table);
+				f = (fadt*)table;
+				if (f->h.len > 132)
+					fadt_extended_addresses = 1;
 				break;
 			}
 
@@ -167,7 +177,12 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 		}
 	}
 
+	process_fadt();
+	apic_process_madt((madt*)ma);
+
 	// hpet_init((hpet_table*)ht);
+
+	pci_init();
 }
 
 void acpi_xsdt(xsdt* x) {
@@ -204,12 +219,17 @@ void acpi_init(void* boot_info) {
 			boot_info = (void*)(((u64)boot_info | 0b111) + 1);
 	}
 
+	if (strcmp((char*)&r->sign, "RSD PTR"))
+		error("Érvénytelen RSDP!");
+
 	printk("oem %.6s\n", r->oem);
 
 	if (x)
 		acpi_xsdt((xsdt*)r->xsdt);
 	else
 		acpi_rsdt((rsdt*)(u64)r->rsdt);
+
+	tsc_configure_using_acpi();
 
 	lai_set_acpi_revision(r->rev);
 	lai_create_namespace();
@@ -223,6 +243,4 @@ void acpi_init(void* boot_info) {
 	e.vector = 0x43;
 	ioapic_write_entry(f->sci_int, e);
 	lai_get_sci_event();
-
-	tsc_configure_using_acpi();
 }

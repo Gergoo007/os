@@ -1,6 +1,6 @@
 #pragma once
 
-#include <pcie/pcie.h>
+#include <pci/pci.h>
 #include <util/attrs.h>
 
 enum {

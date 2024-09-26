@@ -28,9 +28,5 @@ void pit_init() {
 	// ioapic_set_vector(ioapic_irqs[0], 0x41);
 	// ioapic_set_mask(ioapic_irqs[0], 0);
 
-	ioapic_entry e = { .raw = 0, };
-	e.vector = 0x41;
-	ioapic_write_entry(ioapic_irqs[0], e);
-
 	sti();
 }

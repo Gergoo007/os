@@ -26,6 +26,8 @@ extern void* d;
 void x86_introutine(cpu_regs* regs) {
 	switch (regs->exc) {
 		case 0x40: {
+			printk("Interrupt\n");
+
 			u8 scancode = inb(0x60);
 
 			if (scancode == 0xf0) {

@@ -43,9 +43,13 @@ u32 num_ahcis;
 stg_dev* drives;
 u32 num_drives;
 
+uhci* uhcis;
+u32 num_uhcis;
+
 void sysinfo_init() {
 	ioapics = vmm_alloc();
 	cpus = vmm_alloc();
 	drives = vmm_alloc();
 	hpets = vmm_alloc();
+	uhcis = vmm_alloc();
 }

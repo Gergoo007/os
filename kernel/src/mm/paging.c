@@ -38,13 +38,17 @@ void paging_init(void) {
 u64 paging_lookup(u64 virt) {
 	page_table* cr3;
 	asm volatile ("movq %%cr3, %0" : "=r"(cr3));
+	MAKE_VIRTUAL(cr3);
 
 	page_table* pdp = (page_table*)(cr3->entries[ADDR_PML4I(virt)].addr & ~0x0fff);
+	MAKE_VIRTUAL(pdp);
 	page_table* pd = (page_table*)(pdp->entries[ADDR_PDPI(virt)].addr & ~0x0fff);
+	MAKE_VIRTUAL(pd);
 	if (pdp->entries[ADDR_PDPI(virt)].flags & MAP_FLAGS_HUGE) {
 		return (u64)pd + (virt & ((1 << 30)-1));
 	} else {
 		page_table* pt = (page_table*)(pd->entries[ADDR_PDI(virt)].addr & ~0x0fff);
+		MAKE_VIRTUAL(pt);
 		if (pd->entries[ADDR_PDI(virt)].flags & MAP_FLAGS_HUGE) {
 			return (u64)pt + (virt & 0x1fffff);
 		} else {

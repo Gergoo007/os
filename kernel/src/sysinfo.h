@@ -30,7 +30,12 @@ extern u32 num_cpus;
 #include <storage/storage.h>
 #include <storage/ahci/ahci.h>
 
+#include <usb/hci/uhci.h>
+
 extern stg_dev* drives;
 extern u32 num_drives;
+
+extern uhci* uhcis;
+extern u32 num_uhcis;
 
 void sysinfo_init();

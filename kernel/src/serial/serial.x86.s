@@ -59,6 +59,15 @@ inl:
 sputc:
 	mov (%rdi), %al
 	mov $0x3f8, %dx
+	# El lett küldve az előző karakter?
+	add $5, %dx
+.wait:
+	inb %dx, %al
+	and $0x20, %al
+	jz .wait
+
+	sub $5, %dx
+
 	outb %al, %dx
 	mov $1, %al
 	mov $1, %ah
@@ -71,7 +80,18 @@ sputs:
 	cmpb $0, (%rdi)
 	je .ret
 	movb (%rdi), %al
+
+	# El lett küldve az előző karakter?
+	add $5, %dx
+.wait2:
+	inb %dx, %al
+	and $0x20, %al
+	jz .wait2
+	sub $5, %dx
+
+	# El, mehet a következő
 	outb %al, %dx
+
 	inc %rdi
 	jmp sputs
 .ret:

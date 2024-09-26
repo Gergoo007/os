@@ -1,6 +1,6 @@
 #include <util/types.h>
 #include <util/attrs.h>
-#include <pcie/pcie.h>
+#include <pci/pci.h>
 
 enum {
 	AHCI_FIS_REG_H2D	= 0x27,

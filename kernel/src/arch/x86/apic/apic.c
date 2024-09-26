@@ -2,6 +2,7 @@
 #include <gfx/console.h>
 #include <sysinfo.h>
 #include <serial/serial.h>
+#include <acpi/lai/helpers/sci.h>
 
 void lapic_init() {
 	volatile lapic_regs* l = (volatile lapic_regs*)lapic_base;
@@ -11,6 +12,7 @@ void lapic_init() {
 }
 
 void lapic_eoi() {
+	// asm volatile ("outw %0, %1" :: "a"((u16)0x8AE0), "d"((u16)0x8A00));
 	volatile lapic_regs* l = (volatile lapic_regs*)lapic_base;
 	l->eoi = (u32)0;
 }
@@ -56,4 +58,13 @@ void apic_process_madt(madt* m) {
 	}
 
 	lapic_init();
+
+	// TODO: normális rendszer interruptokra pl. PIC fallback
+	if (num_ioapics) {
+		ioapic_entry e = { .raw = 0 };
+		e.vector = 0x41;
+		ioapic_write_entry(ioapic_irqs[0], e);
+	}
+
+	sti();
 }
