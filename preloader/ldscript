@@ -5,6 +5,7 @@ SECTIONS {
 	. += SIZEOF_HEADERS;
 	. = ALIGN(0x1000);
 
+	IMAGE_START = .;
 	.text : {
 		*(.text)
 	}
@@ -16,6 +17,7 @@ SECTIONS {
 	.bss : {
 		*(.bss)
 	}
+	IMAGE_END = .;
 
 	/DISCARD/ : {
 		*(.note.gnu.property)

@@ -1,6 +1,7 @@
 #include <util/types.h>
 #include <util/attrs.h>
 #include <pci/pci.h>
+#include <dtree/tree.h>
 
 enum {
 	AHCI_FIS_REG_H2D	= 0x27,
@@ -261,6 +262,6 @@ typedef struct _attr_packed ata_identity {
 } ata_identity;
 
 ata_identity* ahci_identify(hba_port* port);
-void ahci_init(pci_hdr* hdr);
+void ahci_init(dtree_pci_dev* hc);
 void ahci_read(hba_port* port, u64 start, u64 count, void* buf);
 

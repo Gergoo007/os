@@ -186,7 +186,17 @@ typedef struct _attr_packed fadt {
 	u32 gpe1;
 	u32 : 24;
 	u8 pm_timer_bytes;
-	u8 r0[20];
+	u8 r0[17];
+	struct _attr_packed {
+		u8 legacy_devs : 1;
+		u8 ps2ctrl : 1;
+		u8 no_vga : 1;
+		u8 no_msi : 1;
+		u8 no_aspm : 1;
+		u8 no_rtc : 1;
+		u16 : 10;
+	} pc_feats;
+	u8 r2;
 	union _attr_packed {
 		struct _attr_packed {
 			u8 wbinvd : 1;
@@ -255,3 +265,9 @@ void acpi_xsdt(xsdt* x);
 u32 acpi_read_timer();
 void gas_write(gas* a, u64 val, u32 size);
 u64 gas_read(gas* a, u32 size);
+
+u8 acpi_8042_present();
+u8 acpi_vga_present();
+u8 acpi_isa_lpt_present();
+u8 acpi_rtc_present();
+u8 acpi_msi_usable();

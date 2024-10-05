@@ -8,12 +8,15 @@ bitmap vmm_bm;
 
 #include <serial/serial.h>
 
-#define KHEAP 0xffffc00000000000
-#define KHEAPBM 0xffffb00000000000
+#define KHEAPBM	0xffffb00000000000
+#define KHEAP 	0xffffc00000000000
+#define KMMIO 	0xffffd00000000000
 
 vmem* first_link;
 
 bitmap region_bm;
+
+u64 kmmio_marker = 0xffffd00000000000;
 
 static vmem* new_link() {
 	return first_link + bm_alloc(&region_bm);
@@ -149,4 +152,19 @@ void* vmm_alloc() {
 
 void vmm_free(void* a) {
 	pmm_free(a - 0xffff800000000000);
+}
+
+void* vmm_map_mmio(u64 phys, u64 bytes) {
+	if (bytes & 0x0fff) bytes = (bytes | 0x0fff) + 1; // page-align
+
+	u64 addr = kmmio_marker;
+
+	while (bytes) {
+		map_page(kmmio_marker, phys, 0b11); // Attribútumok maradhatnak (Uncached)
+
+		bytes -= 0x1000;
+		kmmio_marker += 0x1000;
+	}
+
+	return (void*)addr;
 }

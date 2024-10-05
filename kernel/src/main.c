@@ -10,24 +10,29 @@
 #include <arch/x86/cpuid.h>
 #include <arch/x86/clocks/pit.h>
 #include <arch/x86/clocks/tsc.h>
+#include <dtree/tree.h>
 #include <ps2/kbd.h>
 #include <acpi/acpi.h>
 #include <boot/multiboot2.h>
 #include <sysinfo.h>
 #include <userspace/init.h>
-#include <util/mem.h>
 
 extern _attr_noret void khang();
 extern u16* unilookup;
 
-// TODO: Allocate MMIO pages using PAT
-// TODO: normális pci_write/read functionok
-// TODO: Egyesített sleep function
+// TODO: kmalloc 8 többszöröse, alignment miatt
+
+// TODO: drives, num_drives nem kell, dtree elég
+// TODO: Külön fordítani LAI-t
 // TODO: AVX memset
 // TODO: Serial -> arch/x86
-// TODO: Serial-ba nem írni míg (inb(PORT + 5) & 0x20) == 0
+// TODO: SSE bekapcs. a preloaderben, -msse
+// TODO: PS/2: Van-e eszköz az első porton egyáltalán?
 
-_attr_noret void kmain(void* boot_info) {
+_attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
+	// Rendes hardwaren ez befagyasztja a rendszert...
+	// serial_init(0x3f8);
+
 	// asm volatile ("outw %0, %1" :: "a"((u16)0x8A00), "d"((u16)0x8A00));
 
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
@@ -37,7 +42,7 @@ _attr_noret void kmain(void* boot_info) {
 	cr4 |= (1 << 4);
 	asm volatile ("mov %0, %%cr4" :: "r"(cr4));
 
-	multiboot2_parse(boot_info);
+	multiboot2_parse(boot_info, preloader_img_len);
 
 	// TODO: ha igazi hw-en nem jó, ezt nem szabad futtatni
 	pic_init();
@@ -73,6 +78,7 @@ _attr_noret void kmain(void* boot_info) {
 	idt_init();
 
 	sysinfo_init();
+	dtree_init();
 
 	pit_init();
 
@@ -83,16 +89,36 @@ _attr_noret void kmain(void* boot_info) {
 	// else
 	// 	printk("HPET PIT helyett\n");
 
-	// printk("ioapic base %p\n", ioapics[0].base);
-	// u64 redir = ioapic_get_entry(2).raw;
-	// printk("redir ent 2 %p\n", redir);
+	// if (acpi_8042_present())
+		ps2_kbd_init();
+	// else
+		// printk("Nincs PS/2 :(\n");
 
-	ps2_kbd_init();
 	tss_init();
 
 	userspace_init();
 
 	asm volatile ("sti");
+
+	dtree_walk();
+
+	for (u32 i = 0; i < dtree[0].h.num_children; i++) {
+		dtree_dev* d = &dtree_get_child_of_id(0, i);
+		printk("Dev type %s\n", dtree_types[d->h.type]);
+		for (u32 j = 0; j < d->h.num_children; j++) {
+			dtree_dev* d2 = &dtree_get_child(d, j);
+			printk("  > Dev type %s\n", dtree_types[d2->h.type]);
+			for (u32 k = 0; k < d2->h.num_children; k++) {
+				dtree_dev* d3 = &dtree_get_child(d2, k);
+				printk("    > Dev type %s\n", dtree_types[d3->h.type]);
+			}
+		}
+	}
+
+	u32 old = con_fg;
+	con_fg = 0x0000ff00;
+	printk("Kernel idle...");
+	con_fg = old;
 
 	khang();
 }

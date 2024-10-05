@@ -244,3 +244,23 @@ void acpi_init(void* boot_info) {
 	ioapic_write_entry(f->sci_int, e);
 	lai_get_sci_event();
 }
+
+u8 acpi_8042_present() {
+	return f->pc_feats.ps2ctrl;
+}
+
+u8 acpi_vga_present() {
+	return !f->pc_feats.no_vga;
+}
+
+u8 acpi_isa_lpt_present() {
+	return !f->pc_feats.legacy_devs;
+}
+
+u8 acpi_rtc_present() {
+	return !f->pc_feats.no_rtc;
+}
+
+u8 acpi_msi_usable() {
+	return !f->pc_feats.no_msi;
+}

@@ -57,17 +57,17 @@ inl:
 
 # u8 sputc(const char* c);
 sputc:
-	mov (%rdi), %al
-	mov $0x3f8, %dx
+	mov $0x3fd, %dx
+
 	# El lett küldve az előző karakter?
-	add $5, %dx
 .wait:
 	inb %dx, %al
 	and $0x20, %al
-	jz .wait
+	cmp $0, %al
+	je .wait
 
-	sub $5, %dx
-
+	mov $0x3f8, %dx
+	mov (%rdi), %al
 	outb %al, %dx
 	mov $1, %al
 	mov $1, %ah
@@ -75,21 +75,20 @@ sputc:
 
 # void sputs(const char* str);
 sputs:
-	mov $0x3f8, %dx
-.loop:
 	cmpb $0, (%rdi)
 	je .ret
-	movb (%rdi), %al
 
 	# El lett küldve az előző karakter?
-	add $5, %dx
+	mov $0x3fd, %dx
 .wait2:
 	inb %dx, %al
 	and $0x20, %al
-	jz .wait2
-	sub $5, %dx
+	cmp $0, %al
+	je .wait2
 
 	# El, mehet a következő
+	mov $0x3f8, %dx
+	movb (%rdi), %al
 	outb %al, %dx
 
 	inc %rdi

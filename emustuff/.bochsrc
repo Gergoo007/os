@@ -44,7 +44,7 @@ info: action=report
 error: action=report
 panic: action=ask
 keyboard: type=mf, serial_delay=150, paste_delay=100000, user_shortcut=none
-mouse: type=ps2, enabled=false, toggle=ctrl+mbutton
+#mouse: type=ps2, enabled=false, toggle=ctrl+mbutton
 speaker: enabled=true, mode=system
 parport1: enabled=true, file=none
 parport2: enabled=false
@@ -52,6 +52,8 @@ com1: enabled=true, mode=null
 com2: enabled=false
 com3: enabled=false
 com4: enabled=false
-usb_debug: type=none
 
-# usb_uhci: enabled=1, port1=keyboard, options1="speed:low"
+magic_break: enabled=1
+
+usb_uhci: enabled=1, port1=mouse, options1="speed:full"
+# usb_debug: type=uhci, reset=false, enable=false, start_frame=false, doorbell=true, event=false, non_exist=false

@@ -17,71 +17,44 @@ static const u8 kbd_set_3[] = {
 void ps2_kbd_init() {
 	cli();
 
+	ioapic_entry e = { .raw = 0, };
+	e.vector = 0x40;
+	e.mask = 1;
+	ioapic_write_entry(ioapic_irqs[1], e);
+
 	inb(PS2_DATA);
 
-	// Self-test hogy lássuk van-e PS/2
-	outb(0xaa, PS2_CMD);
-	u8 tries = 10;
-	u8 response = inb(PS2_DATA);
-	while (tries--) {
-		if (response != 0x55)
-			response = inb(PS2_DATA);
-		else
-			break;
-	}
+	// PS/2 portok kikapcsolása
+	outb(0xad, PS2_CMD);
+	outb(0xa7, PS2_CMD);
 
-	if (!tries) {
-		// warn("PS/2 kontroller nem elerheto, nem lesz billentyuzet!");
-		return;
-	}
+	inb(PS2_DATA);
 
-	// translation kikapcs
-	// bit 6 a config byte-ban
+	// Config byte beállítása
 	outb(0x20, PS2_CMD);
-	while (inb(PS2_STS) & 2);
-	u8 config = inb(PS2_DATA);
-	config &= ~(1 << 6);
-
+	while (!(inb(PS2_STS) & 1));
+	// Olvasás
+	u8 config_byte = inb(PS2_DATA);
+	config_byte |= (1 << 0); // Első port int.
+	config_byte &= ~(1 << 1); // Második port int. kikapcs. (egér)
+	config_byte |= (1 << 2); // System flag
+	config_byte &= ~(1 << 4); // Első port órajel bekapcs.
+	config_byte &= ~(1 << 6); // Translation kikapcs.
+	// Kiírás
 	outb(0x60, PS2_CMD);
-	while (inb(PS2_STS) & 2);
-	outb(config, PS2_DATA);
-	while (inb(PS2_STS) & 2);
+	// while (!(inb(PS2_STS) & 1));
+	outb(config_byte, PS2_DATA);
 
-	// scancode készlet 3
-	outb(PS2_KBD_SCANCODE, PS2_DATA);
-	while (inb(PS2_STS) & 2);
-	if (inb(PS2_DATA) != 0xfa) warn("Varatlan PS/2 valasz! (0)");
-	outb(3, PS2_DATA);
-	while (inb(PS2_STS) & 2);
+	// Self-testet nem csinálok
 
-	// Jelenlegi készlet
-	u8 current_set;
-	outb(PS2_KBD_SCANCODE, PS2_DATA);
-	while (inb(PS2_STS) & 2);
-	if (inb(PS2_DATA) != 0xfa) warn("Varatlan PS/2 valasz! (1)");
-	outb(0, PS2_DATA);
-	while (inb(PS2_STS) & 2);
-	if (inb(PS2_DATA) != 0xfa) warn("Varatlan PS/2 valasz! (2)");
+	// TODO ide
 
-	current_set = inb(PS2_DATA);
-	// Ha ACK-ot olvastam be, akkor a következő olvasás lesz talán az adat
-	if (current_set == 0xfa)
-		current_set = inb(PS2_DATA);
-	
-	// Ha 10-edjére is csak zöldséget mond akkor nem kell driver
-	tries = 10;
-	while (tries--) {
-		if (current_set != 0x3f && current_set != 0x03 && current_set != 0xfa)
-			current_set = inb(PS2_DATA);
-		else
-			goto proceed;
-	}
-	warn("PS/2 kontroller nem mukodik, megis atment a self-testen?");
-	return;
+	// Első eszköz bekapcsolása
+	outb(0xae, PS2_CMD);
+	// while (!(inb(PS2_STS) & 1));
 
-proceed:
-	ioapic_set_vector(ioapic_irqs[1], 0x40);
-	ioapic_set_mask(ioapic_irqs[1], 0);
+	e.mask = 0;
+	ioapic_write_entry(ioapic_irqs[1], e);
 
 	inb(PS2_DATA);
 

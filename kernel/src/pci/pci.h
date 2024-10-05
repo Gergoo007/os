@@ -85,5 +85,11 @@ typedef union _attr_packed pci_hdr {
 extern mcfg* mc;
 
 void pci_init();
-u64 pci_bar_addr(pci_hdr* d, u8 bar);
-u8 pci_bar_is_io(pci_hdr* d, u8 bar);
+u64 pci_bar_addr(u16 seg, u8 bus, u8 slot, u8 fun, u8 bar);
+u8 pci_bar_is_io(u16 seg, u8 bus, u8 slot, u8 fun, u8 bar);
+void pci_writeb(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint8_t val);
+void pci_writew(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint16_t val);
+void pci_writed(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset, uint32_t val);
+uint8_t pci_readb(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset);
+uint16_t pci_readw(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset);
+uint32_t pci_readl(uint16_t seg, uint8_t bus, uint8_t slot, uint8_t fun, uint16_t offset);

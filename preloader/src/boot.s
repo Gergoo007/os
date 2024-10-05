@@ -2,6 +2,8 @@
 
 .extern _binary_kernel_start
 .extern _binary_kernel_end
+.extern IMAGE_START
+.extern IMAGE_END
 
 .code32
 .section .text
@@ -69,12 +71,33 @@ gdtr:
 	.word gdt_end - gdt - 1
 	.quad gdt
 
+.equ CACHE_WB, 3
+.equ CACHE_WC, 1
+.equ CACHE_WT, 2
+.equ CACHE_UC, 0
+
+.equ MAP_DEF, 0b11011 # Present, RW, WB
+.equ MAP_FB,  0b01011 # Present, RW, WC
+
+// Uncached gyorsabb mint a write-back..?
+#.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
+ .equ MAP_DEF_2M, 0b10000011 # Present, RW, UC, 2MiB
+#.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
+ .equ MAP_FB_2M,  0b10001011 # Present, RW, WC, 2MiB
+
 .section .text
 pmain:
 	cli
 
 	mov $stack_end, %esp
 	mov %esp, %ebp
+
+	# PAT MSR kitöltése
+	mov $0x277, %ecx
+	rdmsr
+	mov $0x00010406, %edx # Magasabb 32
+	mov $0x00010406, %eax # Alacsonyabb 32
+	wrmsr
 
 	mov %ebx, %edi
 	push %edi
@@ -90,28 +113,28 @@ pmain:
 
 	# TODO: Előre kitöltött táblázatok
 	mov $pdp_pl, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov %eax, pml4
 
 	mov $pdp_pl, %ebx
 
 	mov $pd_pl1, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov %eax, (%ebx)
 
 	mov $pd_pl2, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov %eax, 8(%ebx)
 
 	mov $pd_pl3, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov %eax, 16(%ebx)
 
 	mov $pd_pl4, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov %eax, 24(%ebx)
 
-	mov $0b10000011, %eax
+	mov $MAP_DEF_2M, %eax
 	mov $pd_pl1, %ebx
 	xor %ecx, %ecx
 kitolt_pd_pl1:
@@ -157,19 +180,19 @@ kitolt_pd_pl4:
 	jne kitolt_pd_pl4
 
 	mov $pdp_k, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov $pml4, %ebx
 	add $(511 * 8), %ebx
 	mov %eax, (%ebx)
 
 	mov $pd_k, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov $pdp_k, %ebx
 	add $(511 * 8), %ebx
 	mov %eax, (%ebx)
 
 	mov $pdp_pl, %eax
-	or $0b11, %eax
+	or $MAP_DEF, %eax
 	mov $pml4, %ebx
 	add $(256 * 8), %ebx
 	mov %eax, (%ebx)
@@ -210,7 +233,7 @@ mb2_fejlec_map:
 	# pdi: 80
 	mov (%esp), %edi
 	and $0xffe00000, %edi # 2 MiB align lefele
-	or $0b10000011, %edi
+	or $MAP_DEF_2M, %edi
 	mov $pd_k, %eax
 	mov %edi, 640(%eax)
 
@@ -242,7 +265,7 @@ framebuffer_megvan:
 	mov 12(%edi), %ebx
 
 	mov $pd_k, %ecx
-	or $0b10000011, %eax
+	or $MAP_FB_2M, %eax
 	mov %eax, 128(%ecx)
 	mov %ebx, 132(%ecx)
 
@@ -283,7 +306,7 @@ tovabb:
 	// mov (%edi), %eax
 	mov $0, %eax
 	mov 4(%edi), %ecx
-	or $0b10000011, %eax
+	or $MAP_DEF_2M, %eax
 	mov $pd_k, %ebx
 	add $(112 * 8), %ebx
 	mov %eax, (%ebx)
@@ -350,7 +373,11 @@ kovetkezo:
 
 vege:
 	# TODO: BSS nulla
-	mov 24(%rax), %rbx
+	mov $IMAGE_END, %rsi
+	sub $IMAGE_START, %rsi
+	add $0x1000, %rsi
+
+	mov 24(%rax), %rbx # e_entry
 	jmp *%rbx
 
 hiba:

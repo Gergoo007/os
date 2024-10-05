@@ -16,7 +16,7 @@ u64 pmm_mem_all;
 u64 pmm_mem_free;
 u64 pmm_mem_used;
 
-void pmm_init(mb_tag* mmap) {
+void pmm_init(mb_tag* mmap, u64 pl_img_len) {
 	typedef struct {
 		u64 base_addr;
 		u64 length;
@@ -45,12 +45,9 @@ void pmm_init(mb_tag* mmap) {
 			if (e->base_addr >= 0x100000000) break;
 
 			if (firstfree || e->base_addr == 0x100000) {
-				// if (e->length < 0x30000) {
-				// 	firstfree = 0;
-				// 	continue;
-				// }
+				if (pl_img_len & 0x0fff) pl_img_len = (pl_img_len | 0x0fff) + 1;
 
-				heap_base_phys = e->base_addr + 0x60000;
+				heap_base_phys = e->base_addr + pl_img_len;
 				heap_size = e->length;
 				firstfree = 0;
 			}

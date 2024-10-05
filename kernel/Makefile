@@ -9,14 +9,15 @@ COBJS := $(patsubst %.c,out/%.c.o,$(CSRCS))
 SSRCS := $(subst src/,,$(call rwildcard,src,*.s))
 SOBJS := $(patsubst %.s,out/%.s.o,$(SSRCS))
 
+# no-red-zone: painful addition
 _CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
 	-Isrc -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
 	-Wno-unused-parameter -fno-stack-protector -mno-red-zone -O0 -g -Wno-multichar \
-	# no-red-zone: painful addition
+	-Wno-packed-bitfield-compat
 ASFLAGS :=
 LDFLAGS := -T ldscript -z max-page-size=0x1000
 
-CC ?= gcc
+CC := gcc
 LD ?= ld.gold
 AS ?= as
 
@@ -25,20 +26,27 @@ kernel: clean
 
 link: $(SOBJS) $(COBJS) out/font.o
 	@echo "  > $(LD) $@"
-	@$(LD) $(LDFLAGS) out/*.o -o out/kernel
+	@$(LD) $(LDFLAGS) $^ -o out/kernel
+
+# out/%.c.o: src/lai/%.c
+# 	@echo LAI
+# 	@echo "  > $(CC) $^"
+# 	@$(CC) $(_CFLAGS) -c $^ -o out/$@
 
 out/%.c.o: src/%.c
 	@echo "  > $(CC) $^"
-	@$(CC) $(_CFLAGS) -c $^ -o out/$(notdir $@)
+	@$(CC) $(_CFLAGS) -c $^ -o $@
 
 out/%.s.o: src/%.s
 	@echo "  > $(AS) $^"
-	@$(AS) $(ASFLAGS) -c $^ -o out/$(notdir $@)
+	@$(AS) $(ASFLAGS) -c $^ -o $@
 
 out/font.o: src/font.psf
 	@echo "  > $(LD) $^"
 	@$(LD) -r -b binary $^ -o $@
 
 clean:
-	@rm -rf out
-	@mkdir out
+	@rm -rf out/*
+	@find src -type d -exec mkdir -p "out/{}" \;
+	@mv out/src/* out/
+	@rmdir out/src

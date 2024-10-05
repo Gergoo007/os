@@ -9,6 +9,6 @@ extern u64 pmm_mem_used;
 
 extern u64 heap_base_phys;
 
-void pmm_init(mb_tag* mmap);
+void pmm_init(mb_tag* mmap, u64 pl_img_len);
 void* pmm_alloc();
 void pmm_free(void* p);

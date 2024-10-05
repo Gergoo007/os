@@ -35,4 +35,4 @@ typedef struct _attr_packed {
 
 #define FB_VADDR 0xffffffffc2000000
 
-void multiboot2_parse(mb_tag* addr);
+void multiboot2_parse(mb_tag* addr, u64 pl_img_len);

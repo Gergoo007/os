@@ -64,7 +64,7 @@ void update_cursor() {
 	fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - _height, font.glyph_width, 3, con_bg);
 
 	// Új rajzolása
-	fb_draw_rect(&fb_main, con_cx + font.glyph_width + 1, con_cy + font.glyph_height - _height, font.glyph_width, 3, con_fg);
+	fb_draw_rect(&fb_main, con_cx + font.glyph_width + 1, con_cy + font.glyph_height - _height, font.glyph_width, 3, 0x00ffffff);
 }
 
 void cputglyph(u16 glyphnum) {
@@ -103,7 +103,7 @@ void cputc(char c) {
 			con_cy += font.glyph_height + 1;
 			con_cx = 0;
 
-			fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, con_fg);
+			fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, 0x00ffffff);
 
 			return;
 		}
@@ -132,7 +132,6 @@ void cputc(char c) {
 		// Sortörés
 		for (u8 y = 0; y < font.glyph_height; y++) {
 			for (u8 x = 0; x < font.glyph_width; x++) {
-				sprintk("@ %d %d\n\r", con_cx + x, con_cy + y);
 				fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
 			}
 		}

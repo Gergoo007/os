@@ -5,7 +5,7 @@
 #include <gfx/console.h>
 #include <mm/pmm.h>
 
-void multiboot2_parse(mb_tag* addr) {
+void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
 	addr++;
 
 	while (1) {
@@ -17,7 +17,7 @@ void multiboot2_parse(mb_tag* addr) {
 				break;
 			}
 			case MB_TAG_MMAP: {
-				pmm_init(addr);
+				pmm_init(addr, pl_img_len);
 				break;
 			}
 		}

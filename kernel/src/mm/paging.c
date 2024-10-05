@@ -10,8 +10,6 @@
 
 page_table* pml4;
 
-extern char BSS_START;
-
 void paging_init(void) {
 	// RAM többi részének mappelése
 	if (pmm_mem_all < (4ULL<<30)) return;
@@ -50,7 +48,7 @@ u64 paging_lookup(u64 virt) {
 		page_table* pt = (page_table*)(pd->entries[ADDR_PDI(virt)].addr & ~0x0fff);
 		MAKE_VIRTUAL(pt);
 		if (pd->entries[ADDR_PDI(virt)].flags & MAP_FLAGS_HUGE) {
-			return (u64)pt + (virt & 0x1fffff);
+			return PHYSICAL((u64)pt + (virt & 0x1fffff));
 		} else {
 			return (pt->entries[ADDR_PTI(virt)].addr & ~0x0fff) + (virt & 0x0fff);
 		}
@@ -80,7 +78,7 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 	}
 
 	// Custom flagek (bit 12 fölött) eltávolítása
-	flags &= (1 << 12)-1;
+	flags &= (1 << 13)-1;
 
 	entry = &pml4->entries[ADDR_PML4I(virt)];
 	if (entry->flags & MAP_FLAGS_PRESENT) {

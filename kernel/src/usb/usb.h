@@ -29,12 +29,20 @@ enum {
 	USB_REQ_SYNC_FRAME			= 12,
 };
 
+enum {
+	HC_UHCI = 0,
+	HC_OHCI = 1,
+	HC_EHCI = 2,
+	HC_XHCI = 3,
+};
+
 typedef struct usb_dev {
 	void* hc;
 	char* product;
 	char* manufacturer;
 	u8 hc_type;
 	u8 port;
+	u8 mps; // Max Packet Size
 
 	u8 addr : 7;
 	u8 ls : 1;

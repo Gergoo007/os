@@ -24,8 +24,8 @@ void ahci_start_cmds(hba_port* port) {
 	while (!port->cmd.fis_rx_enable);
 }
 
-void ahci_init(pci_hdr* pci) {
-	hba_mem* regs = (hba_mem*)(pci_bar_addr(pci, 5) | 0xffff800000000000);
+void ahci_init(dtree_pci_dev* hc) {
+	hba_mem* regs = (hba_mem*)VIRTUAL(pci_bar_addr(0, hc->bus, hc->dev, hc->fun, 5));
 
 	for (u32 port = 0; port < 32; port++) {
 		// Port nincs jelen a kontrollerben
