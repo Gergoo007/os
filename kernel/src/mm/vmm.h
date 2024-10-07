@@ -10,6 +10,9 @@ typedef struct vmem {
 	u32 padding;
 } vmem;
 
+extern u64 vmm_mem_used;
+extern u64 vmm_mem_free;
+
 void vmm_init();
 void* vmm_alloc();
 void vmm_free(void* a);

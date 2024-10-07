@@ -162,6 +162,8 @@ u8 uhci_init_port(u16 portio, u16 io, dtree_pci_dev* pcidev) {
 	request.raw = USB_GET_DESC_DEVICE;
 	uhci_control(UPID_IN, portio, pcidev->handle, 8, 0, &dev, dev.bMaxPacketSize, 18);
 
+	// A stringek bekérése
+
 	// Végül hozzáadom az eszközt a listához
 	dtree_usb_dev udev = {
 		.h.num_children = 0,

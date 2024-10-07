@@ -18,6 +18,9 @@ bitmap region_bm;
 
 u64 kmmio_marker = 0xffffd00000000000;
 
+u64 vmm_mem_used;
+u64 vmm_mem_free;
+
 static vmem* new_link() {
 	return first_link + bm_alloc(&region_bm);
 }
@@ -37,6 +40,9 @@ void vmm_dump() {
 }
 
 void vmm_init() {
+	vmm_mem_free = pmm_mem_free;
+	vmm_mem_used = pmm_mem_used;
+
 	for (u32 i = 0; i != 0x200000; i += 0x1000) {
 		map_page(KHEAPBM+i, (u64)pmm_alloc(), 0b11);
 	}
@@ -57,6 +63,15 @@ void vmm_init() {
 }
 
 void* kmalloc(u64 bytes) {
+	if (bytes < 16)
+		bytes = 16;
+	else
+		if (bytes & 15)
+			bytes = (bytes | 15) + 1;
+
+	vmm_mem_used += bytes;
+	vmm_mem_free -= bytes;
+
 	u64 a = KHEAP;
 	vmem* l = first_link;
 	while (l) {
@@ -100,6 +115,8 @@ void kfree(void* p) {
 		if (a == (u64)p) {
 			// Szabadnak jelölés
 			l->sts = 0;
+			vmm_mem_used -= l->len;
+			vmm_mem_free += l->len;
 
 			// Utána lévő szabad szakasszal
 			// összeolvasztás (l törlése)

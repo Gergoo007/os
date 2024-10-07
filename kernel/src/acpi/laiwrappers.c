@@ -23,7 +23,7 @@ void* laihost_realloc(void* old, size_t newsize, size_t oldsize) {
 		error("oldsize 0\n");
 
 	if (oldsize > newsize)
-		error("oldsize > newsize\n");
+		return old;
 
 	void* new = kmalloc(newsize);
 	memcpy(new, old, oldsize);

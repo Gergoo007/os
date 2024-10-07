@@ -20,8 +20,6 @@
 extern _attr_noret void khang();
 extern u16* unilookup;
 
-// TODO: kmalloc 8 többszöröse, alignment miatt
-
 // TODO: drives, num_drives nem kell, dtree elég
 // TODO: Külön fordítani LAI-t
 // TODO: AVX memset
