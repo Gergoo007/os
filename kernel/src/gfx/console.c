@@ -13,6 +13,8 @@ u32 con_bg, con_fg = 0xffffffff;
 u16* unilookup;
 
 void con_init() {
+	fb_draw_rect(&fb_main, 0, 0, fb_main.width, fb_main.height, 0x00000000);
+
 	if (font.magic != 0x864ab572) sprintk("Nem talalni PSF2-t!\n\r");
 
 	unilookup = pmm_alloc();

@@ -26,10 +26,9 @@ extern u16* unilookup;
 // TODO: Külön fordítani LAI-t
 // TODO: AVX memset
 // TODO: Serial -> arch/x86
-// TODO: SSE bekapcs. a preloaderben, -msse
 // TODO: PS/2: Van-e eszköz az első porton egyáltalán?
 
-_attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
+_attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
 	// Rendes hardwaren ez befagyasztja a rendszert...
 	// serial_init(0x3f8);
 

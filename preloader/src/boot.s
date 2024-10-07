@@ -60,6 +60,8 @@ pd_k:
 	.skip 0x1000
 boot_info:
 	.skip 0x3000
+mb_fb:
+	.skip 4
 
 .section .data
 .align 0x1000
@@ -70,6 +72,8 @@ gdt_end:
 gdtr:
 	.word gdt_end - gdt - 1
 	.quad gdt
+fcw:
+	.int 0x037F
 
 .equ CACHE_WB, 3
 .equ CACHE_WC, 1
@@ -105,6 +109,9 @@ pmain:
 	mov %edi, %esi
 	mov $boot_info, %edi
 	mov (%esi), %ecx
+	# 4 byte-onként mozgatom az adatot
+	shr $2, %ecx
+	inc %ecx
 
 	rep movsl
 
@@ -229,6 +236,11 @@ noalign:
 	jne tag_vizsgal
 
 mb2_fejlec_map:
+	push %ebx
+	mov $0x00ff0000, %ebx
+	call draw_rect
+	pop %ebx
+
 	# Multiboot2 header -> 0xffffffffca000000
 	# pdi: 80
 	mov (%esp), %edi
@@ -258,11 +270,18 @@ mb2_fejlec_map:
 
 	lgdt gdtr
 
+	push %ebx
+	mov $0x0000ff00, %ebx
+	call draw_rect
+	pop %ebx
+
 	jmp $0x08,$messze
 
 framebuffer_megvan:
 	mov 8(%edi), %eax
 	mov 12(%edi), %ebx
+
+	mov %edi, mb_fb
 
 	mov $pd_k, %ecx
 	or $MAP_FB_2M, %eax
@@ -316,7 +335,65 @@ tovabb:
 
 	jmp tobbitag
 
+# %ebx: szín
+draw_rect:
+	push %eax
+	push %ecx
+	push %edi
+	mov mb_fb, %edi
+	mov 8(%edi), %eax # base
+	mov 16(%edi), %edi # pitch (width*bpp)
+
+	# %edx: y
+	# %ecx: x
+	xor %edx, %edx
+.col:
+		xor %ecx, %ecx
+	.row:
+		mov %ebx, (%eax, %ecx, 4)
+		inc %ecx
+		cmp $51, %ecx
+		jne .row
+	inc %edx
+	add %edi, %eax
+	cmp $51, %edx
+	jne .col
+
+	pop %edi
+	pop %ecx
+	pop %eax
+	ret
+
 .code64
+# %ebx: szín
+draw_rect64:
+	push %rax
+	push %rcx
+	push %rdi
+	mov mb_fb, %edi
+	mov 8(%edi), %eax # base
+	mov 16(%edi), %edi # pitch (width*bpp)
+
+	# %edx: y
+	# %ecx: x
+	xor %edx, %edx
+.col64:
+		xor %ecx, %ecx
+	.row64:
+		mov %ebx, (%eax, %ecx, 4)
+		inc %ecx
+		cmp $51, %ecx
+		jne .row64
+	inc %edx
+	add %edi, %eax
+	cmp $51, %edx
+	jne .col64
+
+	pop %rdi
+	pop %rcx
+	pop %rax
+	ret
+
 messze:
 	mov $0, %ax
 	mov %ax, %ds
@@ -324,6 +401,34 @@ messze:
 	mov %ax, %gs
 	mov %ax, %fs
 	mov %ax, %ss
+
+	push %rbx
+	mov $0x000000ff, %ebx
+	call draw_rect64
+	pop %rbx
+
+	# FPU init
+	fninit
+	fldcw fcw
+
+	# SSE engedélyezése
+	mov %cr0, %rax
+	and $(~(1 << 2)), %rax	# CR0.EM (x87)
+	or $(1 << 1), %rax		# CR0.MP (monitor co-proc)
+	or $(1 << 5), %rax		# CR0.NE (num error)
+	mov %rax, %cr0
+
+	# Egyéb hülyeségek (FXSAVE, FXSTOR, unmasked cuccos)
+	mov %cr4, %rax
+	or $(1 << 9), %rax
+	or $(1 << 10), %rax
+	mov %rax, %cr4
+
+	# Van SSE2?
+	mov $1, %eax
+	xor %ecx, %ecx
+	cpuid
+	and $(1 << 26), %edx
 
 	movabs $_binary_kernel_start, %rax
 	cmpl $0x464c457f, (%rax) # ELF
@@ -377,10 +482,20 @@ vege:
 	sub $IMAGE_START, %rsi
 	add $0x1000, %rsi
 
+	push %rbx
+	mov $0x00ffffff, %ebx
+	call draw_rect64
+	pop %rbx
+
 	mov 24(%rax), %rbx # e_entry
 	jmp *%rbx
 
 hiba:
+	push %rbx
+	mov $0x00ff0000, %ebx
+	call draw_rect64
+	pop %rbx
+
 	mov $0xdeadbeef, %rax
 	jmp .
 

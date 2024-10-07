@@ -3,7 +3,12 @@
 #include <util/types.h>
 
 #include <util/printf.h>
+
+#ifdef DBG_SERIAL
 #define sprintk(fmt, ...) printf(sputc, sputs, fmt, ##__VA_ARGS__)
+#else
+#define sprintk(fmt, ...)
+#endif
 
 void outb(u8 b, u16 port);
 void outw(u16 b, u16 port);

@@ -32,6 +32,12 @@ DECLRISR %f+1,\t
 
 GLOBISR 0, 100
 
+.section .data
+.align 16
+sse_state:
+	.skip 0x512
+
+.section .text
 # Exceptionök
 DECLRISR 0, 9
 DECLRISR_NOFLAG 10, 14
@@ -43,6 +49,7 @@ DECLRISR 64, 72
 .extern x86_introutine
 
 pushall:
+	fxsave sse_state
 	push %rax
 	push %rbx
 	push %rcx
@@ -91,6 +98,7 @@ pushall:
 	pop %rcx
 	pop %rbx
 	pop %rax
+	fxrstor sse_state
 
 	add $0x10, %rsp # hibakód + vektor
 
