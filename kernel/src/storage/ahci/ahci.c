@@ -1,10 +1,10 @@
 #include <storage/ahci/ahci.h>
-#include <storage/storage.h>
 #include <gfx/console.h>
 #include <mm/vmm.h>
 #include <mm/pmm.h>
 #include <mm/paging.h>
 #include <util/mem.h>
+#include <dtree/tree.h>
 
 void ahci_stop_cmds(hba_port* port) {
 	port->cmd.start = 0;
@@ -93,16 +93,17 @@ void ahci_init(dtree_pci_dev* hc) {
 		if (regs->ports[i].sig == AHCI_SIG_SATA) {
 			// Eszköz hozzáadása a jegyzékhez
 			ata_identity* id = ahci_identify(&(regs->ports[i]));
-			storage_register(
-				regs->ports[i].sig != AHCI_SIG_SATA ? STG_ATAPI : STG_ATA,
-				id->sectors_48 * 512,
-				id->firmware,
-				id->model,
-				id->serial,
-				(void*)&regs->ports[i]
-			);
+			dtree_drive d = {
+				.h = {
+					.num_children = 0,
+					.parent = hc->h.index,
+					.type = DEV_ATA,
+				},
+				.identity = id,
+			};
+			dtree_add_drive(&d);
 		} else if (regs->ports[i].sig == AHCI_SIG_SATAPI) {
-
+			
 		}
 	}
 }
@@ -191,7 +192,7 @@ void ahci_read(hba_port* port, u64 start, u64 count, void* buf) {
 }
 
 ata_identity* ahci_identify(hba_port* port) {
-	ata_identity* id = vmm_alloc();
+	ata_identity* id = kmalloc(sizeof(ata_identity));
 	if (port->sig == AHCI_SIG_SATAPI) {
 		memset(id, 0, sizeof(ata_identity));
 		return id;

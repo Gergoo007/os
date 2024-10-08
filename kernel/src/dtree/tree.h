@@ -2,6 +2,15 @@
 
 #include <util/types.h>
 #include <util/attrs.h>
+#include <dtree/basetypes.h>
+#include <storage/ahci/ahci.h>
+
+//   0:40	-> Alaplapon található eszközök
+//  41:140	-> PCI(e) eszközök
+// 141:200	-> USB eszközök
+// 201:220	-> Egyéb háttértárak
+// 221:255	-> Reserved
+// 255		-> Nem definiált/misc
 
 #define TYPE_LIST \
 	TYPE_ADD(DEV_ROOT, 0) \
@@ -9,24 +18,24 @@
 	TYPE_ADD(DEV_RAM, 2) \
 	TYPE_ADD(DEV_CHIPSET, 3) \
 	TYPE_ADD(DEV_PCI_BUS, 4) \
-	TYPE_ADD(DEV_PCIE_BUS, 5) \
-	TYPE_ADD(DEV_PCI_MISC, 6) \
-	TYPE_ADD(DEV_PCI_GPU, 7) \
-	TYPE_ADD(DEV_PCI_AHCI, 8) \
-	TYPE_ADD(DEV_UHCI, 9) \
-	TYPE_ADD(DEV_OHCI, 10) \
-	TYPE_ADD(DEV_EHCI, 11) \
-	TYPE_ADD(DEV_XHCI, 12) \
-	TYPE_ADD(DEV_USB_HID, 13) \
-	TYPE_ADD(DEV_USB_KBD, 14) \
-	TYPE_ADD(DEV_USB_MOU, 15) \
-	TYPE_ADD(DEV_USB_MSD, 16) \
-	TYPE_ADD(DEV_USB_HUB, 17) \
-	TYPE_ADD(DEV_USB_PTP, 18) \
-	TYPE_ADD(DEV_USB_MTP, 19) \
-	TYPE_ADD(DEV_USB_MISC, 20) \
-	TYPE_ADD(DEV_ATA, 21) \
-	TYPE_ADD(DEV_ATAPI, 22) \
+	TYPE_ADD(DEV_IOAPIC, 5) \
+	TYPE_ADD(DEV_PCI_MISC, 41) \
+	TYPE_ADD(DEV_PCI_GPU, 42) \
+	TYPE_ADD(DEV_PCI_AHCI, 43) \
+	TYPE_ADD(DEV_UHCI, 44) \
+	TYPE_ADD(DEV_OHCI, 45) \
+	TYPE_ADD(DEV_EHCI, 46) \
+	TYPE_ADD(DEV_XHCI, 47) \
+	TYPE_ADD(DEV_USB_HID, 141) \
+	TYPE_ADD(DEV_USB_KBD, 142) \
+	TYPE_ADD(DEV_USB_MOU, 143) \
+	TYPE_ADD(DEV_USB_MSD, 144) \
+	TYPE_ADD(DEV_USB_HUB, 145) \
+	TYPE_ADD(DEV_USB_PTP, 146) \
+	TYPE_ADD(DEV_USB_MTP, 147) \
+	TYPE_ADD(DEV_USB_MISC, 148) \
+	TYPE_ADD(DEV_ATA, 201) \
+	TYPE_ADD(DEV_ATAPI, 202) \
 
 // enum verzió
 #define TYPE_ADD(name, val) name = val,
@@ -39,37 +48,6 @@ enum {
 #undef TYPE_ADD
 #define TYPE_ADD(name, val) [val] = #name,
 
-typedef struct _attr_packed dtree_hdr {
-	u16 type;
-	u16 parent;
-	u16 num_children;
-	u16 children[32];
-	u16 index;
-	// u64 data[4];
-} dtree_hdr;
-
-typedef struct _attr_packed dtree_root {
-	dtree_hdr h;
-	u64 reserved[4];
-} dtree_root;
-
-typedef struct _attr_packed dtree_dev {
-	dtree_hdr h;
-	u64 data[4];
-} dtree_dev;
-
-typedef struct _attr_packed dtree_pci_dev {
-	dtree_hdr h;
-	u16 vendor;
-	u16 product;
-	u8 cfg_space;
-	u8 bus;
-	u8 dev;
-	u8 fun;
-	void* handle;
-	u64 reserved[2];
-} dtree_pci_dev;
-
 typedef struct _attr_packed dtree_usb_dev {
 	dtree_hdr h;
 	char* vendor;
@@ -81,10 +59,30 @@ typedef struct _attr_packed dtree_usb_dev {
 	u8 reserved[5];
 } dtree_usb_dev;
 
+typedef struct _attr_packed dtree_drive {
+	dtree_hdr h;
+	ata_identity* identity;
+	u64 reserved[3];
+} dtree_drive;
+
+typedef struct _attr_packed dtree_cpu {
+	dtree_hdr h;
+	union _attr_packed {
+		struct _attr_packed {
+			u8 acpi_id;
+			u8 apic_id;
+			u8 enabled : 1;
+			u8 capable : 1;
+		};
+		u64 reserved[4];
+	};
+} dtree_cpu;
+
 extern dtree_dev* dtree;
 
-#define dtree_get_child_of_id(id, ind) dtree[dtree[id].h.children[ind]]
-#define dtree_get_child(strct, ind) dtree[strct->h.children[ind]]
+#define dtree_get_child_of_id(id, ind) ((void*)(&dtree[dtree[id].h.children[ind]]))
+#define dtree_get_child(strct, ind) ((void*)(&dtree[(strct)->h.children[ind]]))
+#define dtree_for(dev, iter) for (u32 (iter) = 0; (iter) < (dev)->h.num_children; (iter)++)
 
 extern const char* dtree_types[];
 
@@ -92,4 +90,6 @@ void dtree_init();
 u16 dtree_add_dev(dtree_dev* dev);
 u16 dtree_add_pci_dev(dtree_pci_dev* dev);
 u16 dtree_add_usb_dev(dtree_usb_dev* dev);
+u16 dtree_add_drive(dtree_drive* dev);
+u16 dtree_add_chipset_dev(dtree_dev* dev);
 void dtree_walk();

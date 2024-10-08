@@ -2,18 +2,13 @@
 
 #include <pci/pci.h>
 #include <util/attrs.h>
+#include <dtree/tree.h>
 
 enum {
 	IOAPIC_IDENT = 0x00,
 	IOAPIC_VER = 0x01,
 	IOAPIC_ARB = 0x02,
 };
-
-typedef struct ioapic {
-	u64 base;
-	u32 gsi_base;
-	u32 id;
-} ioapic;
 
 typedef union _attr_packed {
 	struct _attr_packed {
@@ -42,6 +37,15 @@ typedef union _attr_packed {
 	};
 	u64 raw;
 } ioapic_entry;
+
+typedef struct _attr_packed dtree_ioapic {
+	dtree_hdr h;
+	void* base;
+	u32 gsi_base;
+	u32 id;
+} dtree_ioapic;
+
+extern u32 ioapic_irqs[];
 
 void ioapic_write_entry(u32 gsi, ioapic_entry entry);
 ioapic_entry ioapic_get_entry(u32 gsi);

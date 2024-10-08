@@ -63,6 +63,8 @@ void vmm_init() {
 }
 
 void* kmalloc(u64 bytes) {
+	if (!bytes) return 0;
+
 	if (bytes < 16)
 		bytes = 16;
 	else

@@ -14,8 +14,6 @@
 
 #include <ps2/kbd.h>
 
-#include <sysinfo.h>
-
 #define print_reg(st, reg) printk("%s: %p ", #reg, st->reg)
 #define sprint_reg(st, reg) sprintk("%s: %p ", #reg, st->reg)
 
@@ -50,7 +48,7 @@ end:
 		}
 
 		case 0x42: {
-			hpet_stop();
+			// hpet_stop();
 			sleep_done = 1;
 
 			lapic_eoi();

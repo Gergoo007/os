@@ -3,7 +3,6 @@
 #include <gfx/console.h>
 #include <serial/serial.h>
 #include <mm/paging.h>
-#include <sysinfo.h>
 
 u8 sleep_done;
 
@@ -72,21 +71,21 @@ void hpet_init(hpet_table* h) {
 	// timer = 1;
 }
 
-void hpet_start(u64 comparator) {
-	hpets[0].regs->enabled = 0;
-	hpets[0].regs->timers[0].intr = 0;
-	hpets[0].regs->counter_val = 0;
-	hpets[0].regs->timers[0].comparator = comparator;
-	hpets[0].regs->timers[0].periodic = 0;
-	hpets[0].regs->timers[0].force32 = 0;
-	if (hpets[0].regs->legacy_replacement_enabled)
-		ioapic_set_mask(ioapic_irqs[0], 0);
-	else
-		ioapic_set_mask(hpets[0].regs->timers[0].gsi, 0);
-	hpets[0].regs->timers[0].intr = 1;
-	hpets[0].regs->enabled = 1;
-}
+// void hpet_start(u64 comparator) {
+// 	hpets[0].regs->enabled = 0;
+// 	hpets[0].regs->timers[0].intr = 0;
+// 	hpets[0].regs->counter_val = 0;
+// 	hpets[0].regs->timers[0].comparator = comparator;
+// 	hpets[0].regs->timers[0].periodic = 0;
+// 	hpets[0].regs->timers[0].force32 = 0;
+// 	if (hpets[0].regs->legacy_replacement_enabled)
+// 		ioapic_set_mask(ioapic_irqs[0], 0);
+// 	else
+// 		ioapic_set_mask(hpets[0].regs->timers[0].gsi, 0);
+// 	hpets[0].regs->timers[0].intr = 1;
+// 	hpets[0].regs->enabled = 1;
+// }
 
-void hpet_stop() {
-	hpets[0].regs->enabled = 0;
-}
+// void hpet_stop() {
+// 	hpets[0].regs->enabled = 0;
+// }

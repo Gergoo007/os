@@ -17,7 +17,6 @@ const char* dtree_types[] = {
 };
 
 void dtree_init() {
-	// 128 eszköz
 	dtree = kmalloc(MAX_NUM_DEVS * sizeof(dtree_dev));
 	memset(dtree, 0, MAX_NUM_DEVS * sizeof(dtree_dev));
 	// Align
@@ -81,5 +80,13 @@ u16 dtree_add_pci_dev(dtree_pci_dev* dev) {
 }
 
 u16 dtree_add_usb_dev(dtree_usb_dev* dev) {
+	return dtree_add_dev((dtree_dev*)dev);
+}
+
+u16 dtree_add_drive(dtree_drive* dev) {
+	return dtree_add_dev((dtree_dev*)dev);
+}
+
+u16 dtree_add_chipset_dev(dtree_dev* dev) {
 	return dtree_add_dev((dtree_dev*)dev);
 }

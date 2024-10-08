@@ -95,7 +95,8 @@ void pci_init() {
 			}
 		}
 
-		dtree[1].h.type = DEV_PCIE_BUS;
+		dtree[1].h.type = DEV_PCI_BUS;
+		dtree[1].data[0] |= 1;
 	} else {
 		// Brute force
 		for (u32 b = 0; b < 256; b++) {
@@ -121,6 +122,7 @@ void pci_init() {
 		}
 
 		dtree[1].h.type = DEV_PCI_BUS;
+		dtree[1].data[0] &= ~1ULL;
 	}
 }
 

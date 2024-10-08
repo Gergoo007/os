@@ -37,4 +37,3 @@ enum {
 extern volatile u64 pit_tick;
 
 void pit_init();
-void sleep(u32 time);

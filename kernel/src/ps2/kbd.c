@@ -1,7 +1,7 @@
 #include <ps2/kbd.h>
 
 #include <arch/x86/apic/apic.h>
-#include <sysinfo.h>
+#include <arch/arch.h>
 
 // betű - 'a' = index [betű scancode-jához]
 static const u8 kbd_set_3[] = {
@@ -15,7 +15,7 @@ static const u8 kbd_set_3[] = {
 };
 
 void ps2_kbd_init() {
-	cli();
+	int_dis();
 
 	ioapic_entry e = { .raw = 0, };
 	e.vector = 0x40;
@@ -58,7 +58,7 @@ void ps2_kbd_init() {
 
 	inb(PS2_DATA);
 
-	sti();
+	int_en();
 }
 
 char ps2_kbd_convert(u8 scancode) {

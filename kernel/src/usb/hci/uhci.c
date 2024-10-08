@@ -5,7 +5,7 @@
 #include <mm/vmm.h>
 #include <mm/pmm.h>
 #include <mm/paging.h>
-#include <arch/x86/clocks/pit.h>
+#include <arch/arch.h>
 #include <util/mem.h>
 
 _attr_pagealigned static usb_request request;

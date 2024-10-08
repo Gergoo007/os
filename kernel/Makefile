@@ -21,6 +21,8 @@ CC := gcc
 LD ?= ld.gold
 AS ?= as
 
+RECOMPILE_ACPI ?= 0
+
 kernel: clean
 	@$(MAKE) --no-print-directory link
 
@@ -28,10 +30,10 @@ link: $(SOBJS) $(COBJS) out/font.o
 	@echo "  > $(LD) $@"
 	@$(LD) $(LDFLAGS) $^ -o out/kernel
 
-# out/%.c.o: src/lai/%.c
-# 	@echo LAI
-# 	@echo "  > $(CC) $^"
-# 	@$(CC) $(_CFLAGS) -c $^ -o out/$@
+out/acpi/lai/%.c.o: src/acpi/lai/%.c
+	@echo LAI
+	@echo "  > $(CC) $^"
+	@$(CC) $(_CFLAGS) -c $^ -o $@
 
 out/%.c.o: src/%.c
 	@echo "  > $(CC) $^"
@@ -46,7 +48,11 @@ out/font.o: src/font.psf
 	@$(LD) -r -b binary $^ -o $@
 
 clean:
+ifeq ($(RECOMPILE_ACPI),1)
 	@rm -rf out/*
+else
+	@find out/ -mindepth 1 -maxdepth 1 -not -path 'out/acpi*' -exec rm -rf {} +
+endif
 	@find src -type d -exec mkdir -p "out/{}" \;
-	@mv out/src/* out/
-	@rmdir out/src
+	@cp -r out/src/* out/
+	@rm -rf out/src

@@ -1,13 +1,12 @@
 #include <arch/x86/clocks/pit.h>
-#include <arch/x86/cpu.h>
+#include <arch/arch.h>
 #include <serial/serial.h>
-#include <sysinfo.h>
 #include <gfx/console.h>
 
 volatile u64 pit_tick = 0;
 
 void pit_init() {
-	cli();
+	int_dis();
 
 	pit_cmd_reg cmd = {
 		.bcd = 0,
@@ -28,5 +27,5 @@ void pit_init() {
 	// ioapic_set_vector(ioapic_irqs[0], 0x41);
 	// ioapic_set_mask(ioapic_irqs[0], 0);
 
-	sti();
+	int_en();
 }

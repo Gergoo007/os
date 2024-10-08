@@ -14,7 +14,6 @@
 #include <ps2/kbd.h>
 #include <acpi/acpi.h>
 #include <boot/multiboot2.h>
-#include <sysinfo.h>
 #include <userspace/init.h>
 
 extern _attr_noret void khang();
@@ -74,7 +73,6 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	gdt_init();
 	idt_init();
 
-	sysinfo_init();
 	dtree_init();
 
 	pit_init();
@@ -100,13 +98,14 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	dtree_walk();
 
 	for (u32 i = 0; i < dtree[0].h.num_children; i++) {
-		dtree_dev* d = &dtree_get_child_of_id(0, i);
+		dtree_dev* d = dtree_get_child_of_id(0, i);
 		printk("Dev type %s\n", dtree_types[d->h.type]);
 		for (u32 j = 0; j < d->h.num_children; j++) {
-			dtree_dev* d2 = &dtree_get_child(d, j);
-			printk("  > Dev type %s\n", dtree_types[d2->h.type]);
+			dtree_dev* d2 = dtree_get_child(d, j);
+			if (d2->h.type == DEV_PCI_MISC) continue;
+			printk("  > Dev type %s: %04x\n", dtree_types[d2->h.type], ((dtree_pci_dev*)d2)->vendor);
 			for (u32 k = 0; k < d2->h.num_children; k++) {
-				dtree_dev* d3 = &dtree_get_child(d2, k);
+				dtree_dev* d3 = dtree_get_child(d2, k);
 				printk("    > Dev type %s\n", dtree_types[d3->h.type]);
 			}
 		}

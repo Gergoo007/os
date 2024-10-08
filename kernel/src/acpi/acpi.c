@@ -13,8 +13,6 @@
 
 #include <mm/paging.h>
 
-#include <sysinfo.h>
-
 #include <serial/serial.h>
 
 static void* _list;
@@ -128,7 +126,7 @@ u32 acpi_read_timer() {
 
 static void process_fadt() {
 	if (f->x_pm_timer.address || f->pm_timer) {
-		pm_timer_present = 1;
+		// pm_timer_present = 1;
 	}
 }
 

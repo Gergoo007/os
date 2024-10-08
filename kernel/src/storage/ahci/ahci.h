@@ -1,7 +1,9 @@
+#pragma once
+
 #include <util/types.h>
 #include <util/attrs.h>
 #include <pci/pci.h>
-#include <dtree/tree.h>
+#include <dtree/basetypes.h>
 
 enum {
 	AHCI_FIS_REG_H2D	= 0x27,
@@ -229,9 +231,9 @@ typedef struct ahci {
 
 typedef struct _attr_packed ata_identity {
 	u16 flags;
-	u16 _1[9];
+	u16 r1[9];
 	char serial[20];
-	u16 _2[3];
+	u16 r2[3];
 	char firmware[8];
 	char model[40];
 	u16 sectors_per_int;
@@ -253,12 +255,12 @@ typedef struct _attr_packed ata_identity {
 	} caps;
 	u32 : 32;
 	u16 valid_ext_data;
-	u16 _4[5];
+	u16 r4[5];
 	u16 size_of_rw_mult;
 	u32 sectors_28;
-	u16 _5[38];
+	u16 r5[38];
 	u64 sectors_48;
-	u16 _6[152];
+	u16 r6[152];
 } ata_identity;
 
 ata_identity* ahci_identify(hba_port* port);
