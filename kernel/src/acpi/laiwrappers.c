@@ -7,8 +7,7 @@
 #include <arch/x86/clocks/tsc.h>
 
 void laihost_free(void* a, size_t s) {
-	// printk("freeing %p\n", a);
-	// kfree(a);
+	kfree(a);
 }
 
 void* laihost_malloc(size_t s) {
@@ -16,18 +15,8 @@ void* laihost_malloc(size_t s) {
 }
 
 void* laihost_realloc(void* old, size_t newsize, size_t oldsize) {
-	if (!old)
-		return kmalloc(newsize);
-	
-	if (!oldsize)
-		error("oldsize 0\n");
-
-	if (oldsize > newsize)
-		return old;
-
-	void* new = kmalloc(newsize);
-	memcpy(new, old, oldsize);
-	return new;
+	if (!oldsize) return kmalloc(newsize);
+	return krealloc(old, newsize);;
 }
 
 _attr_noret void laihost_panic(const char* fmt) {

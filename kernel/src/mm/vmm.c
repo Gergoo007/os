@@ -1,11 +1,11 @@
 #include <mm/vmm.h>
 #include <mm/paging.h>
 #include <mm/pmm.h>
+#include <util/mem.h>
 
 bitmap vmm_bm;
 
 #include <gfx/console.h>
-
 #include <serial/serial.h>
 
 #define KHEAPBM	0xffffb00000000000
@@ -110,59 +110,142 @@ void* kmalloc(u64 bytes) {
 	return 0;
 }
 
+// Ezt nem lehet futtatni??? TODO: "Utánajárni"
 void kfree(void* p) {
+	// u64 a = KHEAP;
+	// vmem* l = first_link;
+	// while (l) {
+	// 	if (a == (u64)p) {
+	// 		// Szabadnak jelölés
+	// 		l->sts = 0;
+	// 		vmm_mem_used -= l->len;
+	// 		vmm_mem_free += l->len;
+
+	// 		// Utána lévő szabad szakasszal
+	// 		// összeolvasztás (l törlése)
+	// 		if (l->next) {
+	// 			if (l->next->sts == 0) {
+	// 				l->next->len += l->len;
+
+	// 				// Láncszem kikerülése (effektíven törlése)
+	// 				if (l->prev)
+	// 					l->prev->next = l->next;
+	// 				if (l->next)
+	// 					l->next->prev = l->prev;
+
+	// 				if (l == first_link)
+	// 					first_link = l->next;
+
+	// 				delete_link(l);
+	// 			}
+	// 		}
+
+	// 		// Előzővel szakasszal való
+	// 		// összeolvasztás (l törlése)
+	// 		if (l->prev) {
+	// 			if (l->prev->sts == 0) {
+	// 				l->prev->len += l->len;
+
+	// 				// Láncszem kikerülése (effektíven törlése)
+	// 				if (l->next)
+	// 					l->next->prev = l->prev;
+	// 				if (l->prev)
+	// 					l->prev->next = l->next;
+
+	// 				delete_link(l);
+	// 			}
+	// 		}
+
+	// 		return;
+	// 	}
+
+	// 	a += l->len;
+	// 	l = l->next;
+	// }
+
+	// error("free: Érvénytelen pointer!");
+}
+
+void* krealloc(void* p, u64 new) {
+	if (new & 0b1111) new = (new | 0b1111) + 1;
+
+	if (!new) {
+		kfree(p);
+		return 0;
+	}
+
+	if (!p)
+		return kmalloc(new);
+
 	u64 a = KHEAP;
 	vmem* l = first_link;
+	u64 oldsize;
 	while (l) {
 		if (a == (u64)p) {
-			// Szabadnak jelölés
-			l->sts = 0;
-			vmm_mem_used -= l->len;
-			vmm_mem_free += l->len;
+			oldsize = l->len;
+			// Ha 16 byte alatti az effektív növekedés,
+			// nem kell hogy történjen semmi a 16 byte-os igazítás miatt
+			if ((new - oldsize) < 16) return p;
 
-			// Utána lévő szabad szakasszal
-			// összeolvasztás (l törlése)
-			if (l->next) {
-				if (l->next->sts == 0) {
-					l->next->len += l->len;
+			if (l->len < new) {
+				// Meg kell nagyobbítani
+				if (l->next) {
+					vmem* next = l->next;
+					if (next->sts == 0 && next->len >= new-oldsize) {
+						// Van utána elég szabad hely
+						if (next->len == new) {
+							// Éppen akkora, tehát a next-et meg kell semmisíteni
+							l->next = next->next;
+							next->next->prev = l;
+							delete_link(next);
+						} else {
+							// Nagyobb
+							next->len -= (new - oldsize);
+						}
 
-					// Láncszem kikerülése (effektíven törlése)
-					if (l->prev)
-						l->prev->next = l->next;
-					if (l->next)
-						l->next->prev = l->prev;
+						l->len = new;
+						return p;
+					} else {
+						// Nincs utána hely
+						void* p2 = kmalloc(new);
+						memcpy(p2, p, oldsize);
 
-					if (l == first_link)
-						first_link = l->next;
+						// Régi hely szabaddá tétele
+						kfree(p);
 
-					delete_link(l);
+						return p2;
+					}
+				}
+			} else if (l->len > new) {
+				// Csökkenteni kell
+				if (l->next) {
+					if (l->next->sts == 0) {
+						// Az utána lévő szegmens szabad
+						l->next->len += oldsize - new;
+						l->len = new;
+						return p;
+					} else {
+						// Nem szabad a következő, újat kell csinálni a kettő közé
+						vmem* newlink = new_link();
+						newlink->len = oldsize - new;
+						newlink->sts = 0;
+						
+						l->next->next->prev = newlink;
+						newlink->prev = l;
+						newlink->next = l->next->next;
+						l->next = newlink;
+
+						l->len = new;
+						return p;
+					}
 				}
 			}
-
-			// Előzővel szakasszal való
-			// összeolvasztás (l törlése)
-			if (l->prev) {
-				if (l->prev->sts == 0) {
-					l->prev->len += l->len;
-
-					// Láncszem kikerülése (effektíven törlése)
-					if (l->next)
-						l->next->prev = l->prev;
-					if (l->prev)
-						l->prev->next = l->next;
-
-					delete_link(l);
-				}
-			}
-
-			return;
 		}
 
 		a += l->len;
 		l = l->next;
 	}
-
-	error("free: Érvénytelen pointer!");
+	return 0;
 }
 
 void* vmm_alloc() {

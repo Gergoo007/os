@@ -7,8 +7,6 @@
 #include <usb/hci/uhci.h>
 #include <usb/hci/ehci.h>
 
-#define MAX_NUM_DEVS 128
-
 dtree_dev* dtree;
 static bitmap devs;
 
@@ -68,6 +66,7 @@ u16 dtree_add_dev(dtree_dev* dev) {
 		error("Nem maradt hely az eszköz hozzáadására");
 		return 0xffff;
 	}
+
 	dtree[dev->h.parent].h.children[dtree[dev->h.parent].h.num_children] = ind;
 	dtree[dev->h.parent].h.num_children++;
 
@@ -84,7 +83,9 @@ u16 dtree_add_usb_dev(dtree_usb_dev* dev) {
 }
 
 u16 dtree_add_drive(dtree_drive* dev) {
-	return dtree_add_dev((dtree_dev*)dev);
+	u16 ret = dtree_add_dev((dtree_dev*)dev);
+	drive_init((void*)&dtree[ret]);
+	return ret;
 }
 
 u16 dtree_add_chipset_dev(dtree_dev* dev) {

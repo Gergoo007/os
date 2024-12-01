@@ -26,6 +26,7 @@ void ahci_start_cmds(hba_port* port) {
 
 void ahci_init(dtree_pci_dev* hc) {
 	hba_mem* regs = (hba_mem*)VIRTUAL(pci_bar_addr(0, hc->bus, hc->dev, hc->fun, 5));
+	hc->handle = (void*)regs;
 
 	for (u32 port = 0; port < 32; port++) {
 		// Port nincs jelen a kontrollerben
@@ -100,6 +101,7 @@ void ahci_init(dtree_pci_dev* hc) {
 					.type = DEV_ATA,
 				},
 				.identity = id,
+				.port = i,
 			};
 			dtree_add_drive(&d);
 		} else if (regs->ports[i].sig == AHCI_SIG_SATAPI) {
@@ -119,7 +121,8 @@ u32 ahci_find_cmd_slot(hba_port* port) {
 	return -1;
 }
 
-void ahci_read(hba_port* port, u64 start, u64 count, void* buf) {
+void ahci_read(dtree_pci_dev* dev, u32 pnum, u64 start, u64 count, void* buf) {
+	hba_port* port = &((hba_mem*)dev->handle)->ports[pnum];
 	port->int_sts.value = (u32)-1;
 
 	u32 slot = ahci_find_cmd_slot(port);
@@ -133,14 +136,14 @@ void ahci_read(hba_port* port, u64 start, u64 count, void* buf) {
 	VIRTUAL(hdr)->prdt_num_entries = count / 8192 + 1;
 	// printk("prdt num %d\n", hdr->prdt_num_entries);
 
-	hba_cmd_table* table = (hba_cmd_table*)(hdr->cmd_table_desc_l | ((u64)hdr->cmd_table_desc_u << 32));
+	hba_cmd_table* table = (hba_cmd_table*)(VIRTUAL(hdr)->cmd_table_desc_l | ((u64)VIRTUAL(hdr)->cmd_table_desc_u << 32));
 	memset((void*)VIRTUAL(table), 0, sizeof(hba_cmd_table) + (VIRTUAL(hdr)->prdt_num_entries-1) * sizeof(hba_prdt_entry));
 
 	// 8192 szektor per PRDT
 	u32 i = 0;
-	for (; i < (u32)hdr->prdt_num_entries-1; i++) {
-		VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)buf & 0xffffffff;
-		VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)buf << 32;
+	for (; i < (u32)VIRTUAL(hdr)->prdt_num_entries-1; i++) {
+		VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf) & 0xffffffff;
+		VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf) << 32;
 
 		VIRTUAL(table)->prdt_entry[i].num_bytes = 16 * 512 - 1;
 		VIRTUAL(table)->prdt_entry[i].ioc = 1;
@@ -149,8 +152,8 @@ void ahci_read(hba_port* port, u64 start, u64 count, void* buf) {
 		count -= 8192;
 	}
 
-	VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)buf & 0xffffffff;
-	VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)buf << 32;
+	VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf) & 0xffffffff;
+	VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf) << 32;
 
 	VIRTUAL(table)->prdt_entry[i].num_bytes = count * 512 - 1;
 	VIRTUAL(table)->prdt_entry[i].ioc = 1;

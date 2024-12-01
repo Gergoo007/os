@@ -39,3 +39,15 @@ typedef __SIZE_TYPE__ size_t;
 
 #define foreach(var, l) for (i64 var = 0; var < (l); var++)
 #define offsetof(s, m) __builtin_offsetof(s, m)
+
+#define bytes2kibs(bytes) ((bytes) >> 10)
+#define bytes2mibs(bytes) ((bytes) >> 20)
+#define bytes2gibs(bytes) ((bytes) >> 30)
+#define bytes2tibs(bytes) ((bytes) >> 40)
+
+#define kib2bytes(kibs) ((kibs) << 10)
+#define mib2bytes(mibs) ((mibs) << 10)
+#define gib2bytes(gibs) ((gibs) << 10)
+#define tib2bytes(tibs) ((tibs) << 10)
+
+#define assert(c) if (!(c)) error("Assert failed: %s (%s:%d)", #c, __FILE__, __LINE__)

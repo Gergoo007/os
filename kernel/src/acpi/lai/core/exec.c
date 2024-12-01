@@ -1469,8 +1469,9 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
             int initial_size = block->limit - block->pc;
             if (initial_size < 0)
                 lai_panic("buffer initializer has negative size");
-            if (initial_size > (int)lai_exec_buffer_size(&result))
+            if (initial_size > (int)lai_exec_buffer_size(&result)) {
                 lai_panic("buffer initializer overflows buffer");
+			}
             memcpy(lai_exec_buffer_access(&result), method + block->pc, initial_size);
 
             if (item->buf_want_result) {

@@ -3,7 +3,9 @@
 #include <util/types.h>
 #include <util/attrs.h>
 #include <dtree/basetypes.h>
-#include <storage/ahci/ahci.h>
+#include <dtree/drives.h>
+
+#define MAX_NUM_DEVS 128
 
 //   0:40	-> Alaplapon található eszközök
 //  41:140	-> PCI(e) eszközök
@@ -58,12 +60,6 @@ typedef struct _attr_packed dtree_usb_dev {
 	u8 mps;
 	u8 reserved[5];
 } dtree_usb_dev;
-
-typedef struct _attr_packed dtree_drive {
-	dtree_hdr h;
-	ata_identity* identity;
-	u64 reserved[3];
-} dtree_drive;
 
 typedef struct _attr_packed dtree_cpu {
 	dtree_hdr h;

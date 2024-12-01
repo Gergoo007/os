@@ -17,9 +17,14 @@ void vprintf(u8 (*putc)(const char* c),
 					putc(&a);
 					break;
 
-				case 's':
-					puts(va_arg(l, char*));
+				case 's': {
+					char* s = va_arg(l, char*);
+					if (s)
+						puts(s);
+					else
+						puts("(null)");
 					break;
+				}
 
 				case 'x': {
 					char num[17];
@@ -54,6 +59,24 @@ void vprintf(u8 (*putc)(const char* c),
 						}
 					}
 
+					break;
+				}
+
+				case 'l': {
+					fmt++;
+					if (*fmt == 'c') {
+						wchar arg = va_arg(l, u32);
+						if (arg > 128) arg = 0;
+						putc((char*)&arg);
+					} else if (*fmt == 's') {
+						wchar* arg = va_arg(l, wchar*);
+						while (*arg) {
+							wchar c = *arg;
+							if (c > 128) c = 0;
+							putc((char*)&c);
+							arg++;
+						}
+					}
 					break;
 				}
 

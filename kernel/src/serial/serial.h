@@ -1,8 +1,8 @@
 #pragma once
 
 #include <util/types.h>
-
 #include <util/printf.h>
+#include <config.h>
 
 #ifdef DBG_SERIAL
 #define sprintk(fmt, ...) printf(sputc, sputs, fmt, ##__VA_ARGS__)

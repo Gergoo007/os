@@ -3,7 +3,8 @@ _QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m 4G -M q35 $(QEMU_FLA
 		-device ich9-usb-uhci6,id=uhci -device ich9-usb-ehci2,id=ehci \
 		-device ahci,id=ahci \
 		-device ide-hd,drive=disk,bus=ahci.0 \
-		-device usb-mouse,bus=uhci.0 -device usb-tablet,bus=ehci.0
+		-device usb-mouse,bus=uhci.0 -device usb-tablet,bus=ehci.0 \
+		-boot d
 
 _QEMU_FLAGS_UEFI := -drive if=pflash,format=raw,unit=0,file="emustuff/OVMF/OVMF_CODE.fd",readonly=on \
 		-drive if=pflash,format=raw,unit=1,file="emustuff/OVMF/OVMF_VARS.fd",readonly=on \
