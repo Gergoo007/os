@@ -11,6 +11,8 @@ _start:
 	// movabs $text, %rdi
 	// syscall
 
+	jmp .
+
 	# Exit syscall
 	mov $0, %eax
 	syscall

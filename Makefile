@@ -4,7 +4,7 @@ _QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m 4G -M q35 $(QEMU_FLA
 		-device ahci,id=ahci \
 		-device ide-hd,drive=disk,bus=ahci.0 \
 		-device usb-mouse,bus=uhci.0 -device usb-tablet,bus=ehci.0 \
-		-boot d
+		-boot d -cpu host
 
 _QEMU_FLAGS_UEFI := -drive if=pflash,format=raw,unit=0,file="emustuff/OVMF/OVMF_CODE.fd",readonly=on \
 		-drive if=pflash,format=raw,unit=1,file="emustuff/OVMF/OVMF_VARS.fd",readonly=on \
@@ -17,11 +17,11 @@ uefi: prepare_img
 	qemu-system-x86_64 $(_QEMU_FLAGS_UEFI) -enable-kvm
 
 test:
-	qemu-system-x86_64 $(_QEMU_FLAGS) -d int
+	qemu-system-x86_64 $(_QEMU_FLAGS) -cpu qemu64 -d int
 
 debug:
-	qemu-system-x86_64 $(_QEMU_FLAGS_UEFI) \
-		-S -s > /dev/null & gdb preloader/out/preloader --eval-command="target remote :1234"
+	qemu-system-x86_64 $(_QEMU_FLAGS_UEFI) -cpu qemu64 \
+		-S -s > /dev/null & gdb kernel/out/kernel --eval-command="target remote :1234"
 
 bochs: prepare_img
 	bochs -qf emustuff/.bochsrc -rc emustuff/bochscmd

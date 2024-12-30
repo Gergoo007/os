@@ -35,7 +35,7 @@ GLOBISR 0, 100
 .section .data
 .align 16
 sse_state:
-	.skip 0x512
+	.skip 512
 
 .section .text
 # Exceptionök

@@ -18,6 +18,15 @@ void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
 				pmm_init(addr, pl_img_len);
 				break;
 			}
+			case MB_TAG_FRAMEBUFFER: {
+				mb_fb* fb = (void*)addr;
+				// Framebuffer előkészítése
+				fb_main.base = FB_VADDR;
+				fb_main.size = fb->width * fb->height * (fb->bpp/8);
+				fb_main.width = fb->width;
+				fb_main.height = fb->height;
+				break;
+			}
 		}
 
 		addr = (void*)((u64)addr + ((addr->size + 7) & ~7));

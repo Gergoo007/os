@@ -110,6 +110,33 @@ void* kmalloc(u64 bytes) {
 	return 0;
 }
 
+// TODO: -O3-al kompatibilis??
+void kpremap(void* p) {
+	u64 a = KHEAP;
+	vmem* l = first_link;
+	while (l) {
+		if (a == (u64)p) {
+			// Align
+			u64 toalign = (u64)p+l->len;
+			if (toalign & 0x0fff) {
+				toalign |= 0x0fff;
+				toalign++;
+			}
+
+			for (u64 i = (u64)p; i < toalign; i += 0x1000) {
+				// Kell egy olvasást végezni, hogy megizonyosodjunk róla
+				// hogy mappelve van fizikai címre ez a page
+				asm volatile ("" :: "r"(*(char*)i));
+				// printk("page: %p\n", i);
+			}
+			return;
+		}
+
+		a += l->len;
+		l = l->next;
+	}
+}
+
 // Ezt nem lehet futtatni??? TODO: "Utánajárni"
 void kfree(void* p) {
 	// u64 a = KHEAP;

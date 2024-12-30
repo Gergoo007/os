@@ -80,14 +80,23 @@ fcw:
 .equ CACHE_WT, 2
 .equ CACHE_UC, 0
 
-.equ MAP_DEF, 0b11011 # Present, RW, WB
-.equ MAP_FB,  0b01011 # Present, RW, WC
+// .equ MAP_DEF, 0b11111 # Present, RW, WB
+// .equ MAP_FB,  0b01111 # Present, RW, WC
+
+// // Uncached gyorsabb mint a write-back..?
+// #.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
+//  .equ MAP_DEF_2M, 0b10000111 # Present, RW, UC, 2MiB
+// #.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
+//  .equ MAP_FB_2M,  0b10001111 # Present, RW, WC, 2MiB
+
+.equ MAP_DEF, 0b00111 # Present, RW, WB
+.equ MAP_FB,  0b00111 # Present, RW, WC
 
 // Uncached gyorsabb mint a write-back..?
 #.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
- .equ MAP_DEF_2M, 0b10000011 # Present, RW, UC, 2MiB
+ .equ MAP_DEF_2M, 0b10000111 # Present, RW, UC, 2MiB
 #.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
- .equ MAP_FB_2M,  0b10001011 # Present, RW, WC, 2MiB
+ .equ MAP_FB_2M,  0b10000111 # Present, RW, WC, 2MiB
 
 .section .text
 pmain:
@@ -238,7 +247,7 @@ noalign:
 mb2_fejlec_map:
 	push %ebx
 	mov $0x00ff0000, %ebx
-	call draw_rect
+	// call draw_rect
 	pop %ebx
 
 	# Multiboot2 header -> 0xffffffffca000000
@@ -272,7 +281,7 @@ mb2_fejlec_map:
 
 	push %ebx
 	mov $0x0000ff00, %ebx
-	call draw_rect
+	// call draw_rect
 	pop %ebx
 
 	jmp $0x08,$messze
@@ -404,7 +413,7 @@ messze:
 
 	push %rbx
 	mov $0x000000ff, %ebx
-	call draw_rect64
+	// call draw_rect64
 	pop %rbx
 
 	# FPU init
@@ -484,7 +493,7 @@ vege:
 
 	push %rbx
 	mov $0x00ffffff, %ebx
-	call draw_rect64
+	// call draw_rect64
 	pop %rbx
 
 	mov 24(%rax), %rbx # e_entry
@@ -493,7 +502,7 @@ vege:
 hiba:
 	push %rbx
 	mov $0x00ff0000, %ebx
-	call draw_rect64
+	// call draw_rect64
 	pop %rbx
 
 	mov $0xdeadbeef, %rax

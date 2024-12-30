@@ -50,7 +50,7 @@ void dtree_walk() {
 			}
 
 			case DEV_UHCI: {
-				uhci_init(d);
+				// uhci_init(d);
 				break;
 			}
 		}

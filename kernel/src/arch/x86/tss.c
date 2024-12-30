@@ -16,5 +16,5 @@ void tss_init() {
 
 	gdt_add_tss(t);
 
-	asm volatile ("mov $0x28, %ax\nltr %ax");
+	asm volatile ("ltr %0" :: "a"((u16)0x28));
 }

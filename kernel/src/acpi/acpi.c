@@ -217,8 +217,8 @@ void acpi_init(void* boot_info) {
 			boot_info = (void*)(((u64)boot_info | 0b111) + 1);
 	}
 
-	if (strcmp((char*)&r->sign, "RSD PTR"))
-		error("Érvénytelen RSDP!");
+	if (strncmp((char*)&r->sign, "RSD PTR", 7))
+		error("Érvénytelen RSDP! Észlelt: %s", (char*)&r->sign);
 
 	printk("oem %.6s\n", r->oem);
 

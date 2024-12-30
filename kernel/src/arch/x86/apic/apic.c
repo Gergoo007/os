@@ -6,6 +6,8 @@
 #include <acpi/lai/helpers/sci.h>
 #include <mm/paging.h>
 
+volatile lapic_regs* base;
+
 volatile lapic_regs* lapic_get_base() {
 	u32 lo, hi;
 	asm volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0x1b));
@@ -15,14 +17,13 @@ volatile lapic_regs* lapic_get_base() {
 }
 
 void lapic_init() {
-	volatile lapic_regs* base = lapic_get_base();
+	base = lapic_get_base();
 	// LAPIC beállítása
 	printk("APIC verzió %02x\n", base->version);
 	base->spur_int = 0xff | (1 << 8);
 }
 
 void lapic_eoi() {
-	volatile lapic_regs* base = lapic_get_base();
 	base->eoi = (u32)0;
 }
 

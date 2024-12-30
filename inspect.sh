@@ -1,1 +1,2 @@
-objdump --disassemble preloader/out/preloader --disassembler-color=on | less -r
+objdump --disassemble preloader/out/preloader --disassembler-color=on --visualize-jumps=color -S | less -r
+

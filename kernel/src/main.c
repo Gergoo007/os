@@ -15,6 +15,7 @@
 #include <acpi/acpi.h>
 #include <boot/multiboot2.h>
 #include <userspace/init.h>
+#include <userspace/loader/loader.h>
 #include <fs/vfs/vfs.h>
 #include <fs/gpt.h>
 #include <fs/fat32/fat32.h>
@@ -23,14 +24,21 @@
 extern _attr_noret void khang();
 extern u16* unilookup;
 
+u32 dump = 0;
+
 // TODO: kfree megjavítása
 
-// TODO: 4K szektorméret AHCI-ba
-// TODO: drivers & driverif implementáció, drivers mappa, modulok
+// TODO: betölthető modulok
+
+// TODO: Komplett AHCI újraírás
 // TODO: Külön fordítani LAI-t
 // TODO: AVX memset
 // TODO: Serial -> arch/x86
 // TODO: PS/2: Van-e eszköz az első porton egyáltalán?
+
+// ha a userspace kód jmp .-ot ér el, #GPF, err 0x0018-at kapok
+// NeptunOS-ben, syscall-ok nélkül a userspace teljesen jól műxik
+// ?
 
 _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
 	// Rendes hardwaren ez befagyasztja a rendszert...
@@ -45,16 +53,13 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	cr4 |= (1 << 4);
 	asm volatile ("mov %0, %%cr4" :: "r"(cr4));
 
+	sprintk("teszt\n\r");
+
 	multiboot2_parse(boot_info, preloader_img_len);
 
 	// TODO: ha igazi hw-en nem jó, ezt nem szabad futtatni
 	pic_init();
 
-	// Framebuffer előkészítése
-	fb_main.base = FB_VADDR;
-	fb_main.size = 1024*768*4;
-	fb_main.width = 1024;
-	fb_main.height = 768;
 	con_init();
 
 	printk("Heap %p\n", heap_base_phys);
@@ -145,10 +150,25 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 
 	vfs_list_mnts();
 
-	void* content = vmm_alloc();
-	fd* f = vfs_open("/fat/tfile");
-	vfs_read(f, content, 20);
-	printk("content: %s", content);
+	{
+		void* content = kmalloc(13000);
+		memset(content, 0, 13000);
+		fd* f = vfs_open("/fat/elf");
+		// dump = 1;
+		vfs_read(f, content, 20);
+		// sprintk("content:\n\r%s\n\r", content);
+		void (*entry)(void) = elf_load(content);
+		printk("jmp to %p\n", entry);
+		userexec(entry, vmm_alloc());
+		// userexec(0, vmm_alloc());
+
+		extern gdt_entry* gdt;
+		for (u8 i = 0; i < 8; i++) {
+			sprintk("gdt[%d]: %p\n\r", i, *(u64*)((u8*)gdt+i*8));
+		}
+
+		while (1);
+	}
 
 	printk("dump start\n");
 	ramfs_dump_dir((void*)mnts[0].p->drive);

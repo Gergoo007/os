@@ -5,6 +5,7 @@
 #include <mm/paging.h>
 #include <util/mem.h>
 #include <dtree/tree.h>
+#include <serial/serial.h>
 
 void ahci_stop_cmds(hba_port* port) {
 	port->cmd.start = 0;
@@ -131,15 +132,15 @@ void ahci_read(dtree_pci_dev* dev, u32 pnum, u64 start, u64 count, void* buf) {
 	hdr += slot;
 	VIRTUAL(hdr)->fis_len = sizeof(fis_reg_h2d) / sizeof(u32);
 	VIRTUAL(hdr)->write = 0;
-	// hdr->prdt_num_entries = (u16) ((count - 1) >> 4);
-	// Egy PRDT 8192 SZEKTORT, nem byte-ot tárol
-	VIRTUAL(hdr)->prdt_num_entries = count / 8192 + 1;
-	// printk("prdt num %d\n", hdr->prdt_num_entries);
+	if (count % 8 == 0) {
+		VIRTUAL(hdr)->prdt_num_entries = count / 8;
+	} else {
+		VIRTUAL(hdr)->prdt_num_entries = count / 8 + 1;
+	}
 
 	hba_cmd_table* table = (hba_cmd_table*)(VIRTUAL(hdr)->cmd_table_desc_l | ((u64)VIRTUAL(hdr)->cmd_table_desc_u << 32));
 	memset((void*)VIRTUAL(table), 0, sizeof(hba_cmd_table) + (VIRTUAL(hdr)->prdt_num_entries-1) * sizeof(hba_prdt_entry));
 
-	// 8192 szektor per PRDT
 	u32 i = 0;
 	for (; i < (u32)VIRTUAL(hdr)->prdt_num_entries-1; i++) {
 		VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf) & 0xffffffff;
@@ -148,15 +149,50 @@ void ahci_read(dtree_pci_dev* dev, u32 pnum, u64 start, u64 count, void* buf) {
 		VIRTUAL(table)->prdt_entry[i].num_bytes = 16 * 512 - 1;
 		VIRTUAL(table)->prdt_entry[i].ioc = 1;
 
-		buf += 8192 * 512; // 8192 szektor * 512 byte
-		count -= 8192;
+		buf += 0x1000;
+		count -= 8;
 	}
 
 	VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf) & 0xffffffff;
 	VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf) << 32;
 
 	VIRTUAL(table)->prdt_entry[i].num_bytes = count * 512 - 1;
+
+	if ((u64)buf + count * 512 > ((u64)buf | 0x0fff)) {
+		// Mennyivel csordul át a következő page-re
+		u64 overflow = ((u64)buf + 512) & 0x0fff;
+		
+		if (((u64)buf & 0xffffc00000000000) == 0xffffc00000000000) {
+			// printk("overflow %04x; buf %p\n", overflow, buf);
+			VIRTUAL(table)->prdt_entry[i].num_bytes = (count * 512 - 1) - overflow;
+			VIRTUAL(table)->prdt_entry[i].ioc = 0;
+
+			VIRTUAL(hdr)->prdt_num_entries++;
+			i++;
+
+			VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf+(count * 512)-overflow) & 0xffffffff;
+			VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf+(count * 512)-overflow) << 32;
+			VIRTUAL(table)->prdt_entry[i].num_bytes = overflow-1;
+			VIRTUAL(table)->prdt_entry[i].ioc = 1;
+
+			buf += 512;
+		} else {
+			warn("vmm_alloc deprecated, kmalloc jobb");
+		}
+	}
+
 	VIRTUAL(table)->prdt_entry[i].ioc = 1;
+
+	// extern u32 dump;
+	// if (dump) {
+	// 	sprintk("======PRDT DUMP=========\n\r");
+	// 	for (u32 j = 0; j < VIRTUAL(hdr)->prdt_num_entries; j++) {
+	// 		sprintk("ent #%d\n\r", j);
+	// 		sprintk("addr %p\n\r", VIRTUAL(table)->prdt_entry[j].data_base_addrl | ((u64)(VIRTUAL(table)->prdt_entry[j].data_base_addru) << 32));
+	// 		sprintk("bytes %d\n\r", VIRTUAL(table)->prdt_entry[j].num_bytes);
+	// 	}
+	// 	sprintk("======PRDT DUMP=========\n\r");
+	// }
 
 	// Setup parancs
 	fis_reg_h2d* cmd_fis = (fis_reg_h2d*)table->cmd_fis;

@@ -19,4 +19,5 @@ void* vmm_alloc();
 void* krealloc(void* p, u64 new);
 void vmm_free(void* a);
 void* kmalloc(u64 bytes);
+void kpremap(void* p);
 void kfree(void* p);

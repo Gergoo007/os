@@ -33,6 +33,17 @@ typedef struct _attr_packed {
 	u32 size;
 } mb_tag;
 
+typedef struct _attr_packed {
+	u32 type;
+	u32 size;
+	u64 addr;
+	u32 pitch;
+	u32 width;
+	u32 height;
+	u8 bpp;
+	u8 fb_type;
+} mb_fb;
+
 #define FB_VADDR 0xffffffffc2000000
 
 void multiboot2_parse(mb_tag* addr, u64 pl_img_len);

@@ -1,4 +1,4 @@
-.global teszt
+.global userexec
 .global user_teszt
 .extern printf
 
@@ -8,8 +8,7 @@ kstack:
 
 .section .text
 user_teszt:
-	xor %eax, %eax
-	syscall
+	jmp user_teszt
 
 # %rcx: return cím
 # %r11: %rflags
@@ -48,14 +47,13 @@ on_syscall:
 
 # %rdi: entry
 # %rsi: uj stack
-teszt:
+userexec:
 	# STAR MSR
 	movq $0xC0000081, %rcx
 	# STAR 63:48 + 16: user CS
 	# STAR 63:48 + 08: user SS
-	mov $0x00000000, %rax
-	// mov $0x000b0008, %edx
-	mov $0x00100008, %edx
+	mov $0x00000000, %eax
+	mov $0x00130008, %edx
 	wrmsr
 
 	# LSTAR MSR
@@ -66,12 +64,6 @@ teszt:
 	movabs $on_syscall, %rax
 	wrmsr
 
-	# %rip
-	mov %rdi, %rcx
-	# %eflags
-	mov $0x202, %r11
-	// mov $0x002, %r11
-
 	# Többi szegmens beállítása 0x18-ra (offsetof gdt->udata)
 	mov $0x1b, %ax
 	movw %ax, %ds
@@ -80,6 +72,8 @@ teszt:
 	movw %ax, %gs
 
 	swapgs
+
+	movq %rsp, kstack(%rip)
 
 	push %rbp
 	push %rax
@@ -97,10 +91,14 @@ teszt:
 	push %r14
 	push %r15
 
-	movq %rsp, kstack(%rip)
-
 	# Felhasználói stack
 	mov %rsi, %rsp
-	mov %rsi, %rbp
+
+	# # %rip
+	mov %rdi, %rcx
+	// mov $user_teszt, %rcx
+	# %eflags
+	// mov $0x202, %r11
+	mov $0x202, %r11
 
 	sysretq

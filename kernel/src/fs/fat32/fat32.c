@@ -154,7 +154,15 @@ void fat32_read(partition* fs, char* path, void* into, u64 bytes) {
 					if (!strcmp(name, dirname)) {
 						found = true;
 						printk("file martch: %d byte\n", d[i].std.filesize);
-						drive_read(fs->drive, lba_data + (d[i].std.first_cluster_lower-2) * bpb->sectors_per_cluster, 1, into);
+						printk("1 cluster is %d bytes\n", bpb->sectors_per_cluster*bpb->bytes_per_sector);
+						// Első cluster olvasása
+						drive_read(fs->drive, lba_data + (d[i].std.first_cluster_lower-2) * bpb->sectors_per_cluster, bpb->sectors_per_cluster, into);
+						into += bpb->sectors_per_cluster * bpb->bytes_per_sector;
+
+						for (u32 j = d[i].std.first_cluster_lower; fat[j] < 0x0FFFFFF8; j++) {
+							drive_read(fs->drive, lba_data + (fat[j]-2) * bpb->sectors_per_cluster, bpb->sectors_per_cluster, into);
+							into += bpb->sectors_per_cluster * bpb->bytes_per_sector;
+						}
 
 						return;
 					}
