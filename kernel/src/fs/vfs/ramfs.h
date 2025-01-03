@@ -38,6 +38,7 @@ void ramfs_mount(partition* fs, char* path);
 void ramfs_create(partition* fs, char* path);
 void ramfs_mkdir(partition* fs, char* path);
 void ramfs_read(partition* fs, char* path, void* into, u64 bytes);
+u64 ramfs_get_size(partition* fs, char* path);
 void ramfs_write(partition* fs, char* path, void* from, u64 bytes);
 
 void ramfs_dump_dir(ramfs_dir* dir);

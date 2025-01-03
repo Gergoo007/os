@@ -1,26 +1,33 @@
 .global userexec
 .global user_teszt
 .extern printf
+.extern cputu8
+.extern cputs
 
 .section .bss
 kstack:
 	.quad 0
 
 .section .text
-user_teszt:
-	jmp user_teszt
-
 # %rcx: return cím
 # %r11: %rflags
 on_syscall:
 	cmp $0, %eax
 	je .exit
 .printk:
+	push %rdi
+	push %rsi
 	push %r11
 	push %rcx
+	mov %rdi, %rdx
+	mov %rsi, %rcx
+	movabs $cputu8, %rdi
+	movabs $cputs, %rsi
 	call printf
 	pop %rcx
 	pop %r11
+	pop %rsi
+	pop %rdi
 	sysretq
 
 .exit:

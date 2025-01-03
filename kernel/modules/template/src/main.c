@@ -1,0 +1,3 @@
+void mod_main() {
+	
+}

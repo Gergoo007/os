@@ -61,7 +61,6 @@ void lai_set_sci_event(uint16_t value) {
 // lai_enable_acpi(): Enables ACPI SCI
 // Param:   uint32_t mode - IRQ mode (ACPI spec section 5.8.1)
 // Return:  int - 0 on success
-
 int lai_enable_acpi(uint32_t mode) {
     lai_nsnode_t *handle;
     lai_state_t state;

@@ -2,18 +2,16 @@
 #include <acpi/lai/core.h>
 #include <acpi/lai/helpers/sci.h>
 #include <acpi/lai/helpers/pm.h>
-
 #include <gfx/console.h>
 #include <util/string.h>
-
 #include <pci/pci.h>
 #include <arch/x86/apic/apic.h>
 #include <arch/x86/clocks/hpet.h>
 #include <arch/x86/clocks/tsc.h>
-
 #include <mm/paging.h>
-
+#include <mm/pmm.h>
 #include <serial/serial.h>
+#include <util/elf.h>
 
 static void* _list;
 static u32 _entries;

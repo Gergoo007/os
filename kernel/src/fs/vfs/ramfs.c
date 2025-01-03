@@ -11,6 +11,7 @@ void ramfs_register_module() {
 		.fs_write = ramfs_write,
 		.fs_create = ramfs_create,
 		.fs_mkdir = ramfs_mkdir,
+		.fs_get_size = ramfs_get_size,
 	};
 }
 
@@ -185,6 +186,42 @@ void ramfs_read(partition* fs, char* path, void* into, u64 bytes) {
 			memcpy(into, f->content, bytes);
 
 			return;
+		}
+
+		for (u32 i = 0; i < d->num_entries; i++) {
+			if (!strcmp(dirname, d->entries[i].f.name)) {
+				d = (void*)&d->entries[i];
+			}
+		}
+	}
+}
+
+u64 ramfs_get_size(partition* fs, char* path) {
+	ramfs_dir* d = &((ramfs_header*)(fs->drive))->root;
+
+	while (1) {
+		if (*path == '/') path++;
+		u32 len = 0;
+		while (*path != '\0' && *path != '/') {
+			len++;
+			path++;
+		}
+
+		char* dirname = kmalloc(len+1);
+		memcpy(dirname, path - len, len);
+		dirname[len] = 0;
+
+		if (!*path) {
+			ramfs_file* f = 0;
+			for (u32 i = 0; i < d->num_entries; i++) {
+				if (!strcmp(dirname, d->entries[i].f.name)) {
+					f = (void*)&d->entries[i];
+				}
+			}
+			assert(f);
+			assert(f->type == RAMFS_FILE);
+
+			return f->length;
 		}
 
 		for (u32 i = 0; i < d->num_entries; i++) {

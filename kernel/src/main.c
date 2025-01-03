@@ -20,6 +20,7 @@
 #include <fs/gpt.h>
 #include <fs/fat32/fat32.h>
 #include <fs/vfs/ramfs.h>
+#include <modules/modules.h>
 
 extern _attr_noret void khang();
 extern u16* unilookup;
@@ -138,22 +139,49 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 				dtree_drive* d3 = dtree_get_child(d2, k);
 				// printk("    > Dev type %s\n", dtree_types[d3->h.type]);
 				if (d3->h.type != DEV_ATA) continue;
-				foreach(p, d3->tbl->num_parts) {
-					if (d3->tbl->parts[p].type == PART_ESP) {
-						vfs_mkdir("/fat");
-						fat32_mount(&d3->tbl->parts[p], "/fat");
-					}
-				}
+
+				
+
+				void* f = kmalloc(4300);
+				kpremap(f);
+				drive_read(d3, 0, -1, f);
+				u32 ind = module_link(f);
+				printk("entry: %p\n", modules[ind].entry);
+				modules[ind].entry();
+
+				while (1);
+
+				// foreach(p, d3->tbl->num_parts) {
+				// 	if (d3->tbl->parts[p].type == PART_ESP) {
+				// 		vfs_mkdir("/fat");
+				// 		fat32_mount(&d3->tbl->parts[p], "/fat");
+				// 	}
+				// }
 			}
 		}
 	}
 
 	vfs_list_mnts();
 
+	fd* tesztmod = vfs_open("/fat/kernelmod", "r");
+	u64 modsize = vfs_get_size(tesztmod);
+	void* m = kmalloc(modsize);
+	vfs_read(tesztmod, m, modsize);
+	module_link(m);
+	u32 ind = 0;
+	printk("entry disasm: ");
+	foreach(i, 4) {
+		printk("%02x ", *(u8*)(modules[ind].entry+i));
+	}
+	printk("\n");
+	modules[ind].entry();
+
+	// while (1);
+
 	{
 		void* content = kmalloc(13000);
 		memset(content, 0, 13000);
-		fd* f = vfs_open("/fat/elf");
+		fd* f = vfs_open("/fat/elf", "r");
 		// dump = 1;
 		vfs_read(f, content, 20);
 		// sprintk("content:\n\r%s\n\r", content);

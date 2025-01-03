@@ -6,9 +6,9 @@ LDFLAGS := -T ldscript -z max-page-size=0x1000 -static
 kernel: clean
 	@$(MAKE) --no-print-directory link
 
-link: out/boot.s.o out/kernel.o
-	@echo "  > $(LD) $@"
-	@ld.gold $(LDFLAGS) out/*.o -o out/preloader
+link: out/boot.s.o out/kernel.o syms
+	@echo "  > $(LD) preloader"
+	@ld.gold $(LDFLAGS) out/boot.s.o out/kernel.o out/ksymtab.o out/kstrtab.o out/kshstrtab.o -o out/preloader
 
 out/%.s.o: src/%.s
 	@echo "  > $(AS) $^"
@@ -20,6 +20,13 @@ out/kernel.o: ../kernel/out/kernel
 	@strip --strip-all kernel
 	@ld.gold -r -b binary kernel -o $@
 	@rm kernel
+
+syms:
+	@echo "  > tools/extractor ../kernel/out/kernel"
+	@../tools/symextractor/extractor ../kernel/out/kernel out/ksymtab out/kstrtab out/kshstrtab
+	@ld.gold -r -b binary out/ksymtab -o out/ksymtab.o
+	@ld.gold -r -b binary out/kstrtab -o out/kstrtab.o
+	@ld.gold -r -b binary out/kshstrtab -o out/kshstrtab.o
 
 clean:
 	@rm -rf out

@@ -20,7 +20,7 @@ test:
 	qemu-system-x86_64 $(_QEMU_FLAGS) -cpu qemu64 -d int
 
 debug:
-	qemu-system-x86_64 $(_QEMU_FLAGS_UEFI) -cpu qemu64 \
+	qemu-system-x86_64 $(_QEMU_FLAGS) -cpu qemu64 \
 		-S -s > /dev/null & gdb kernel/out/kernel --eval-command="target remote :1234"
 
 bochs: prepare_img

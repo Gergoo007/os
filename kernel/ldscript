@@ -1,5 +1,10 @@
 ENTRY("kentry")
 
+PHDRS {
+	text PT_LOAD FILEHDR PHDRS;
+	data PT_LOAD;
+}
+
 SECTIONS {
 	. = 0xffffffffce000000;
 	. += SIZEOF_HEADERS;
@@ -8,15 +13,16 @@ SECTIONS {
 	IMAGE_START = .;
 	.text : {
 		*(.text)
-	}
+		*(.rodata)
+	} :text
 
 	.data : {
 		*(.data)
-	}
+	} :data
 
 	.bss : {
 		*(.bss)
-	}
+	} :data
 	IMAGE_END = .;
 
 	/DISCARD/ : {

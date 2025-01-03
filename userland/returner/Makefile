@@ -6,3 +6,6 @@ CC ?= cc
 compile:
 	$(CC) $(CFLAGS) -T link.ld $(SRCS) -o returner
 
+install:
+	doas cp returner /mnt/misc/elf
+

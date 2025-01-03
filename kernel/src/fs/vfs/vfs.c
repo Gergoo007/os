@@ -33,13 +33,20 @@ void vfs_list_mnts() {
 	}
 }
 
-fd* vfs_open(char* path) {
+fd* vfs_open(char* path, char* mode) {
 	// A leghosszabb egyező path lesz a helyes mountpoint
 	u32 longest_match = 0;
+	bool valid = false; // Volt-e találat egyáltalán?
 	for (u32 i = 0; i < num_mnts; i++) {
 		if (mnts[i].path_length < longest_match) continue;
-		if (!strncmp(mnts[i].path, path, mnts[i].path_length))
+		if (!strncmp(mnts[i].path, path, mnts[i].path_length)) {
 			if (i > longest_match) longest_match = i;
+			valid = true;
+		}
+	}
+	if (!valid && mode[0] == 'r') {
+		errno = ENOENT;
+		return 0;
 	}
 
 	fd* f = kmalloc(sizeof(fd));
@@ -78,6 +85,10 @@ void vfs_read(fd* f, void* into, u64 bytes) {
 
 void vfs_write(fd* f, void* from, u64 bytes) {
 	f->vt->fs_write(f->fs, f->relative_path, from, bytes);
+}
+
+u64 vfs_get_size(fd* f) {
+	return f->vt->fs_get_size(f->fs, f->relative_path);
 }
 
 void vfs_close(fd *f) {

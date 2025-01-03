@@ -5,6 +5,10 @@
 .extern IMAGE_START
 .extern IMAGE_END
 
+.extern _binary_out_ksymtab_start
+.extern _binary_out_kstrtab_start
+.extern _binary_out_kshstrtab_start
+
 .code32
 .section .text
 .align 8
@@ -39,7 +43,7 @@ mb2_hdr_end:
 .section .bss
 .align 8
 stack:
-	.skip 0x1000
+	.skip 0x10000
 stack_end:
 .align 0x1000
 pml4:
@@ -80,23 +84,23 @@ fcw:
 .equ CACHE_WT, 2
 .equ CACHE_UC, 0
 
-// .equ MAP_DEF, 0b11111 # Present, RW, WB
-// .equ MAP_FB,  0b01111 # Present, RW, WC
+.equ MAP_DEF, 0b11011 # Present, RW, WB
+.equ MAP_FB,  0b01011 # Present, RW, WC
+
+// Uncached gyorsabb mint a write-back..?
+#.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
+ .equ MAP_DEF_2M, 0b10000011 # Present, RW, UC, 2MiB
+#.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
+ .equ MAP_FB_2M,  0b10001011 # Present, RW, WC, 2MiB
+
+// .equ MAP_DEF, 0b00111 # Present, RW, WB
+// .equ MAP_FB,  0b00111 # Present, RW, WC
 
 // // Uncached gyorsabb mint a write-back..?
 // #.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
 //  .equ MAP_DEF_2M, 0b10000111 # Present, RW, UC, 2MiB
 // #.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
-//  .equ MAP_FB_2M,  0b10001111 # Present, RW, WC, 2MiB
-
-.equ MAP_DEF, 0b00111 # Present, RW, WB
-.equ MAP_FB,  0b00111 # Present, RW, WC
-
-// Uncached gyorsabb mint a write-back..?
-#.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
- .equ MAP_DEF_2M, 0b10000111 # Present, RW, UC, 2MiB
-#.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
- .equ MAP_FB_2M,  0b10000111 # Present, RW, WC, 2MiB
+//  .equ MAP_FB_2M,  0b10000111 # Present, RW, WC, 2MiB
 
 .section .text
 pmain:
@@ -126,6 +130,19 @@ pmain:
 
 	mov $boot_info, %edi
 	mov %edi, (%esp)
+
+	# symtab, strtab, shstrtab
+	mov $boot_info, %edi
+	addl (%edi), %edi
+
+	movl $_binary_out_ksymtab_start, 0(%edi)
+	movl $_binary_out_ksymtab_size, 4(%edi)
+	movl $_binary_out_kstrtab_start, 8(%edi)
+	movl $_binary_out_kstrtab_size, 12(%edi)
+	movl $_binary_out_kshstrtab_start, 16(%edi)
+	movl $_binary_out_kshstrtab_size, 20(%edi)
+
+	mov (%esp), %edi
 
 	# TODO: Előre kitöltött táblázatok
 	mov $pdp_pl, %eax

@@ -4,8 +4,24 @@
 #include <gfx/framebuffer.h>
 #include <gfx/console.h>
 #include <mm/pmm.h>
+#include <mm/paging.h>
+
+struct elf64_sym* ksymtab;
+void* kstrtab;
+void* kshstrtab;
+
+u32 ksymtab_size;
+u32 kstrtab_size;
+u32 kshstrtab_size;
 
 void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
+	u32* p = (void*)addr + *(u32*)addr;
+	ksymtab = VIRTUAL((void*)(u64)*(p++));
+	ksymtab_size = VIRTUAL(*(p++));
+	kstrtab = VIRTUAL((void*)(u64)*(p++));
+	kstrtab_size = VIRTUAL(*(p++));
+	kshstrtab = VIRTUAL((void*)(u64)*(p++));
+	kshstrtab_size = VIRTUAL(*(p++));
 	addr++;
 
 	while (addr->type) {

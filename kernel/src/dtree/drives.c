@@ -30,7 +30,7 @@ dtree_drive* drive_by_num(u8 num) {
 
 void drive_init(dtree_drive* d) {
 	gpt_hdr* h = vmm_alloc();
-	drive_read(d, 1, 8, h);
+	drive_read(d, 1, sizeof(gpt_hdr), h);
 
 	part_table* tbl = kmalloc(sizeof(part_table));
 	tbl->num_parts = 0;
@@ -53,11 +53,18 @@ void drive_init(dtree_drive* d) {
 	vmm_free(h);
 }
 
-void drive_read(dtree_drive* d, u64 start, u64 sectors, void* into) {
+void drive_read(dtree_drive* d, u64 start, u64 bytes, void* into) {
 	dtree_dev* parent = &dtree[d->h.parent];
 	switch (parent->h.type) {
 		case DEV_PCI_AHCI: {
-			ahci_read((dtree_pci_dev*)parent, d->port, start, sectors, into);
+			if (d->identity->ExtendedNumberOfUserAddressableSectors) {
+				if (bytes > d->identity->ExtendedNumberOfUserAddressableSectors*512)
+					bytes = d->identity->ExtendedNumberOfUserAddressableSectors*512;
+			} else if (d->identity->UserAddressableSectors) {
+				if (bytes > d->identity->UserAddressableSectors*512)
+					bytes = d->identity->UserAddressableSectors*512;
+			}
+			ahci_read((dtree_pci_dev*)parent, d->port, start, bytes, into);
 			break;
 		}
 	}

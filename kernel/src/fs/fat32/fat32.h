@@ -126,6 +126,7 @@ enum {
 void fat32_register_module();
 void fat32_mount(partition* part, char* path);
 void fat32_read(partition* fs, char* path, void* into, u64 bytes);
+u64 fat32_get_size(partition* fs, char* path);
 void fat32_write(partition* fs, char* path, void* from, u64 bytes);
 void fat32_create(partition* fs, char* path);
 void fat32_mkdir(partition* fs, char* path);

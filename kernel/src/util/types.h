@@ -51,3 +51,10 @@ typedef __SIZE_TYPE__ size_t;
 #define tib2bytes(tibs) ((tibs) << 10)
 
 #define assert(c) if (!(c)) error("Assert failed: %s (%s:%d)", #c, __FILE__, __LINE__)
+
+extern struct elf64_sym* ksymtab;
+extern u32 ksymtab_size;
+extern void* kstrtab;
+extern u32 kstrtab_size;
+extern void* kshstrtab;
+extern u32 kshstrtab_size;

@@ -14,12 +14,12 @@ _CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
 	-Isrc -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
 	-Wno-unused-parameter -fno-stack-protector -mno-red-zone -O0 -g -Wno-multichar \
 	-Wno-packed-bitfield-compat -msse -msse2
-ASFLAGS :=
-LDFLAGS := -T ldscript -z max-page-size=0x1000
+_ASFLAGS :=
+_LDFLAGS := -T ldscript -z max-page-size=0x1000 --no-gc-sections
 
 CC := gcc
 LD ?= ld.gold
-AS ?= as
+AS ?= gcc
 
 RECOMPILE_ACPI ?= 0
 
@@ -28,7 +28,7 @@ kernel: clean
 
 link: $(SOBJS) $(COBJS) out/font.o
 	@echo "  > $(LD) $@"
-	@$(LD) $(LDFLAGS) $^ -o out/kernel
+	@$(LD) $(_LDFLAGS) $^ -o out/kernel
 
 out/acpi/lai/%.c.o: src/acpi/lai/%.c
 	@echo LAI
@@ -41,7 +41,7 @@ out/%.c.o: src/%.c
 
 out/%.s.o: src/%.s
 	@echo "  > $(AS) $^"
-	@$(AS) $(ASFLAGS) -c $^ -o $@
+	$(AS) $(_ASFLAGS) -c $^ -o $@
 
 out/font.o: src/font.psf
 	@echo "  > $(LD) $^"
