@@ -24,6 +24,7 @@ u32 utf16_to_ascii(wchar* in, char* out) {
 		out[count] = in[count];
 		count++;
 	}
+	out[count] = 0;
 	return count;
 }
 
@@ -51,7 +52,7 @@ u32 strcpy(const char* src, char* dest) {
 }
 
 u8 strncmp(const char* s1, const char* s2, u32 chars) {
-	while (chars--) {
+	while (chars-- && *s1 && *s2) {
 		if (*s1 != *s2)
 			return 1;
 		s1++;

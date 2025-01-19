@@ -3,19 +3,17 @@ MAKEFLAGS += --no-builtin-variables
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
-CSRCS := $(subst src/,,$(call rwildcard,src,*.c))
-COBJS := $(patsubst %.c,out/%.c.o,$(CSRCS))
-
-SSRCS := $(subst src/,,$(call rwildcard,src,*.s))
-SOBJS := $(patsubst %.s,out/%.s.o,$(SSRCS))
+CSRCS := $(subst ,,$(call rwildcard,src,*.c))
+SSRCS := $(subst ,,$(call rwildcard,src,*.s))
 
 # no-red-zone: painful addition
 _CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
-	-Isrc -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
+	-I../../src -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
 	-Wno-unused-parameter -fno-stack-protector -mno-red-zone -O0 -g -Wno-multichar \
 	-Wno-packed-bitfield-compat -msse -msse2
+
 ASFLAGS :=
-LDFLAGS := -T module.ld -z max-page-size=0x1000 -pie
+LDFLAGS := -T module.ld -z max-page-size=0x1000 --just-symbols=kernel.syms -pie
 
 CC := gcc
 LD ?= ld.gold
@@ -24,25 +22,16 @@ AS ?= as
 MOD_NAME := $(notdir $(CURDIR))
 
 module: clean
-	@$(MAKE) --no-print-directory link
+	$(CC) $(_CFLAGS) $(CSRCS) $(SSRCS) -c -o out/module.o
+	strip -R .eh_frame -R .rela.eh_frame --strip-debug out/module.o
 
-link: $(SOBJS) $(COBJS)
-	@echo "  > [$(MOD_NAME)] $(LD) $@"
-	@$(LD) $(LDFLAGS) $^ -o out/module
-
-out/%.c.o: src/%.c
-	@echo "  > [$(MOD_NAME)] $(CC) $^"
-	@$(CC) $(_CFLAGS) -c $^ -o $@
-
-out/%.s.o: src/%.s
-	@echo "  > [$(MOD_NAME)] $(AS) $^"
-	@$(AS) $(ASFLAGS) -c $^ -o $@
-
-regen_ldscript:
-
+install: module
+	mcopy -n -o -i ../../../disk.img@@1048576 out/module.o ::modules/$(MOD_NAME).km
 
 clean:
-	@rm -rf out/*
-	@find src -type d -exec mkdir -p "out/{}" \;
-	@cp -r out/src/* out/ 2> /dev/null || :
-	@rm -rf out/src
+	rm -rf out/*
+	find src -type d -exec mkdir -p "out/{}" \;
+	cp -r out/src/* out/ 2> /dev/null || :
+	rm -rf out/src
+
+$(V).SILENT:

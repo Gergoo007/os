@@ -27,19 +27,13 @@ extern u16* unilookup;
 
 u32 dump = 0;
 
+// !!!! DTREE REPLACEMENT MIHAMARABB !!!!
+
 // TODO: kfree megjavítása
 
-// TODO: betölthető modulok
-
-// TODO: Komplett AHCI újraírás
-// TODO: Külön fordítani LAI-t
 // TODO: AVX memset
 // TODO: Serial -> arch/x86
 // TODO: PS/2: Van-e eszköz az első porton egyáltalán?
-
-// ha a userspace kód jmp .-ot ér el, #GPF, err 0x0018-at kapok
-// NeptunOS-ben, syscall-ok nélkül a userspace teljesen jól műxik
-// ?
 
 _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
 	// Rendes hardwaren ez befagyasztja a rendszert...
@@ -88,22 +82,6 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 
 	vfs_init();
 
-	// vfs_dir* d = kmalloc(sizeof(vfs_dir) + 8); // Egy child lesz
-
-	// vfs_file* f = kmalloc(sizeof(vfs_file));
-	// f->name = "tesztfile";
-	// f->parent = d;
-
-	// d->name = "mappa";
-	// d->num_children = 1;
-	// d->children[0].f = f;
-	// d->parent = root;
-	// d->type = 1;
-
-	// root->children[root->num_children++].f = f;
-
-	// vfs_read(f);
-
 	dtree_init();
 
 	pit_init();
@@ -140,69 +118,17 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 				// printk("    > Dev type %s\n", dtree_types[d3->h.type]);
 				if (d3->h.type != DEV_ATA) continue;
 
-				
-
-				void* f = kmalloc(4300);
-				kpremap(f);
-				drive_read(d3, 0, -1, f);
-				u32 ind = module_link(f);
-				printk("entry: %p\n", modules[ind].entry);
-				modules[ind].entry();
-
-				while (1);
-
-				// foreach(p, d3->tbl->num_parts) {
-				// 	if (d3->tbl->parts[p].type == PART_ESP) {
-				// 		vfs_mkdir("/fat");
-				// 		fat32_mount(&d3->tbl->parts[p], "/fat");
-				// 	}
-				// }
+				foreach(p, d3->tbl->num_parts) {
+					if (d3->tbl->parts[p].type == PART_ESP) {
+						vfs_mkdir("/fat");
+						fat32_mount(&d3->tbl->parts[p], "/fat");
+					}
+				}
 			}
 		}
 	}
 
 	vfs_list_mnts();
-
-	fd* tesztmod = vfs_open("/fat/kernelmod", "r");
-	u64 modsize = vfs_get_size(tesztmod);
-	void* m = kmalloc(modsize);
-	vfs_read(tesztmod, m, modsize);
-	module_link(m);
-	u32 ind = 0;
-	printk("entry disasm: ");
-	foreach(i, 4) {
-		printk("%02x ", *(u8*)(modules[ind].entry+i));
-	}
-	printk("\n");
-	modules[ind].entry();
-
-	// while (1);
-
-	{
-		void* content = kmalloc(13000);
-		memset(content, 0, 13000);
-		fd* f = vfs_open("/fat/elf", "r");
-		// dump = 1;
-		vfs_read(f, content, 20);
-		// sprintk("content:\n\r%s\n\r", content);
-		void (*entry)(void) = elf_load(content);
-		printk("jmp to %p\n", entry);
-		userexec(entry, vmm_alloc());
-		// userexec(0, vmm_alloc());
-
-		extern gdt_entry* gdt;
-		for (u8 i = 0; i < 8; i++) {
-			sprintk("gdt[%d]: %p\n\r", i, *(u64*)((u8*)gdt+i*8));
-		}
-
-		while (1);
-	}
-
-	printk("dump start\n");
-	ramfs_dump_dir((void*)mnts[0].p->drive);
-	printk("dump end\n");
-
-	while (1);
 
 	u32 old = con_fg;
 	con_fg = 0x0000ff00;

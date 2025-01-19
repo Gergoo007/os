@@ -2,15 +2,21 @@
 
 #define NULL 0
 
+#ifndef __SIZEOF_INT128__
+#error "__uint128_t missing!"
+#endif
+
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
+typedef __uint128_t u128;
 
 typedef char i8;
 typedef short i16;
 typedef int i32;
 typedef long long i64;
+typedef __int128_t i128;
 
 typedef u8 uint8_t;
 typedef u16 uint16_t;

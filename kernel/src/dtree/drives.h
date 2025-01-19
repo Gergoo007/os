@@ -41,6 +41,10 @@ typedef struct partition {
 	u64 startlba;
 	u64 endlba;
 	dtree_drive* drive;
+	union {
+		void* cache;
+		struct fat32_cache* f32c;
+	};
 } partition;
 
 typedef struct _attr_packed part_table {

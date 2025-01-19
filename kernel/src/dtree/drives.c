@@ -64,7 +64,15 @@ void drive_read(dtree_drive* d, u64 start, u64 bytes, void* into) {
 				if (bytes > d->identity->UserAddressableSectors*512)
 					bytes = d->identity->UserAddressableSectors*512;
 			}
-			ahci_read((dtree_pci_dev*)parent, d->port, start, bytes, into);
+			if (bytes < 512) {
+				// Bounce buffer
+				void* tmp = kmalloc(512);
+				ahci_read((dtree_pci_dev*)parent, d->port, start, 512, tmp);
+				memcpy(into, tmp, bytes);
+				kfree(tmp);
+			} else {
+				ahci_read((dtree_pci_dev*)parent, d->port, start, bytes, into);
+			}
 			break;
 		}
 	}

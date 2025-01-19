@@ -1,0 +1,2 @@
+doas losetup -D
+

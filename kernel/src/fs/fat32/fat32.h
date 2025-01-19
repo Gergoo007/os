@@ -1,6 +1,7 @@
 #pragma once
 
 #include <dtree/tree.h>
+#include <fs/vfs/vfs.h>
 
 typedef struct _attr_packed fat32_bpb {
 	u8 jmp[3];
@@ -61,7 +62,7 @@ typedef struct _attr_packed fat32_fsinfo {
 } fat32_fsinfo;
 
 typedef struct _attr_packed fat32_std_83 {
-	char sfn[11];
+	char name[11];
 	u8 attrs;
 	u8 winnt;
 	struct _attr_packed {
@@ -113,6 +114,14 @@ typedef union _attr_packed {
 	fat32_lfn lfn;
 } fat32_entry;
 
+typedef struct fat32_cache {
+	fat32_bpb* bpb;
+	u64 lba_root_dir;
+	u64 lba_data;
+	u64 lba_fats;
+	u32* fat;
+} fat32_cache;
+
 enum {
 	FAT_ATTR_RO = 1,
 	FAT_ATTR_HIDDEN = 1 << 1,
@@ -126,6 +135,7 @@ enum {
 void fat32_register_module();
 void fat32_mount(partition* part, char* path);
 void fat32_read(partition* fs, char* path, void* into, u64 bytes);
+void fat32_readdir(partition* fs, char* path, dd** into);
 u64 fat32_get_size(partition* fs, char* path);
 void fat32_write(partition* fs, char* path, void* from, u64 bytes);
 void fat32_create(partition* fs, char* path);

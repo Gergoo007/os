@@ -1,3 +1,4 @@
+#include <config.h>
 #include <fs/fat32/fat32.h>
 #include <mm/vmm.h>
 #include <util/mem.h>
@@ -5,10 +6,10 @@
 #include <gfx/console.h>
 #include <fs/vfs/vfs.h>
 
-// fs_vtable fat32_vt = {
-// 	.fs_init = fat32_init,
-// 	.fs_readf = fat32_readf,
-// };
+typedef struct fat32_dir {
+	fat32_entry* entries;
+	u32 num_entry;
+} fat32_dir;
 
 void fat32_register_module() {
 	fs_vtables[FSTYPE_FAT32] = (fs_vtable) {
@@ -18,63 +19,26 @@ void fat32_register_module() {
 		.fs_create = fat32_create,
 		.fs_mkdir = fat32_mkdir,
 		.fs_get_size = fat32_get_size,
+		.fs_readdir = fat32_readdir,
 	};
 }
 
 // Egyelőre csak FAT32 support
 void fat32_mount(partition* part, char* path) {
+	// fat32_bpb* bpb = kmalloc(sizeof(fat32_bpb));
+	// drive_read(part->drive, part->startlba, sizeof(fat32_bpb), bpb);
+
 	fat32_bpb* bpb = vmm_alloc();
 	drive_read(part->drive, part->startlba, 4096, bpb);
 
-	// // Offszetek
-	// u64 lba_fats = part->startlba + bpb->reserved_sectors;
-	// // Ha FAT12/16-ra portolnék: bpb->num_sectors_per_fat
-	// u64 lba_root_dir = lba_fats + bpb->num_fats * bpb->ebpb_fat32.sectors_per_fat; // bpb->num_sectors_per_fat;
-	// u64 lba_data = lba_root_dir + ((bpb->num_root_dir_entries * 32 + bpb->bytes_per_sector - 1) / bpb->bytes_per_sector);
-
-	// fat32_entry* entries = vmm_alloc();
-	// u32 num_entries = 0;
-	// u32 longest_lfn_chain = 1;
-	// drive_read(part->drive, lba_root_dir, 1, entries);
-	// for (u32 i = 0; entries[i].lfn.attr; i++) {
-	// 	if (entries[i].lfn.attr == FAT_ATTR_LFN) {
-	// 		if (i && entries[i-1].lfn.attr == FAT_ATTR_LFN) longest_lfn_chain++;
-	// 	} else
-	// 		num_entries++;
-	// }
-
-	// wchar* wname = kmalloc(sizeof(wchar) * longest_lfn_chain * 13);
-	// memset(wname, 0, sizeof(wchar) * longest_lfn_chain * 13);
-	// for (u32 i = 0; entries[i].lfn.attr; i++) {
-	// 	if (entries[i].lfn.attr == FAT_ATTR_LFN) {
-	// 		memcpy(wname+((entries[i].lfn.order.number-1)*13), entries[i].lfn.n0, 10);
-	// 		memcpy(wname+((entries[i].lfn.order.number-1)*13)+5, entries[i].lfn.n1, 12);
-	// 		memcpy(wname+((entries[i].lfn.order.number-1)*13)+11, entries[i].lfn.n2, 4);
-	// 	} else if (entries[i].lfn.attr & FAT_ATTR_DIR) {
-	// 		char* name = kmalloc(wstrlen(wname)*2);
-	// 		utf16_to_ascii(wname, name);
-	// 		printk("Mappa: %s\n", name);
-
-	// 		// vfs_add_dir(fs_root, name, 1);
-
-	// 		memset(wname, 0, sizeof(wchar) * longest_lfn_chain * 13);
-	// 	} else if (entries[i].lfn.attr & FAT_ATTR_VOL_ID) {
-	// 		// TODO: lehet hogy nem LFN
-	// 		char* name = kmalloc(wstrlen(wname)*2);
-	// 		utf16_to_ascii(wname, name);
-	// 		printk("Volume ID: %s\n", name);
-		
-	// 		memset(wname, 0, sizeof(wchar) * longest_lfn_chain * 13);
-	// 	} else {
-	// 		char* name = kmalloc(wstrlen(wname)*2);
-	// 		utf16_to_ascii(wname, name);
-	// 		printk("Fájl: %s\n", name);
-
-	// 		// vfs_add_file(fs_root, name, entries[i].std.filesize);
-
-	// 		memset(wname, 0, sizeof(wchar) * longest_lfn_chain * 13);
-	// 	}
-	// }
+	// TODO: kfree() -> umount
+	part->f32c = kmalloc(sizeof(fat32_cache));
+	part->f32c->bpb = bpb;
+	part->f32c->lba_fats = part->startlba + bpb->reserved_sectors;
+	part->f32c->lba_root_dir = part->f32c->lba_fats + bpb->num_fats * bpb->ebpb_fat32.sectors_per_fat;
+	part->f32c->lba_data = part->f32c->lba_root_dir + ((bpb->num_root_dir_entries * 32 + bpb->bytes_per_sector - 1) / bpb->bytes_per_sector);
+	part->f32c->fat = kmalloc(bpb->ebpb_fat32.sectors_per_fat * 512);
+	drive_read(part->drive, part->f32c->lba_fats, bpb->ebpb_fat32.sectors_per_fat * 512, part->f32c->fat);
 
 	// Mount listához hozzáadás
 	strcpy(path, mnts[num_mnts].path);
@@ -87,168 +51,183 @@ void fat32_mount(partition* part, char* path) {
 		.type = PART_ESP,
 		.fstype = FSTYPE_FAT32,
 		.name = "fat",
+		.cache = part->cache,
 	};
 	num_mnts++;
 }
 
-void fat32_read(partition* fs, char* path, void* into, u64 bytes) {
-	fat32_bpb* bpb = vmm_alloc();
-	drive_read(fs->drive, fs->startlba, 4096, bpb);
+u128 fat32_read_entry(partition* fs, char* path) {
+	// Első 64 bit: memóriacím
+	// Utána levő 63 bit: fájlok száma/fájlméret
+	// Utolsó 1 bit: 1 ha mappa; 0 ha fájl
+	u128 ret = 0;
 
-	// Offszetek
-	u64 lba_fats = fs->startlba + bpb->reserved_sectors;
-	// Ha FAT12/16-ra portolnék: bpb->num_sectors_per_fat
-	u64 lba_root_dir = lba_fats + bpb->num_fats * bpb->ebpb_fat32.sectors_per_fat; // bpb->num_sectors_per_fat;
-	u64 lba_data = lba_root_dir + ((bpb->num_root_dir_entries * 32 + bpb->bytes_per_sector - 1) / bpb->bytes_per_sector);
+	fat32_bpb* bpb = fs->f32c->bpb;
 
-	fat32_entry* d = kmalloc(sizeof(fat32_entry));
-	drive_read(fs->drive, lba_root_dir, sizeof(fat32_entry), d);
+	fat32_entry* d = vmm_alloc();
+	drive_read(fs->drive, fs->f32c->lba_root_dir, 512, d);
 
 	wchar* wname = kmalloc(sizeof(wchar) * 255);
 	memset(wname, 0, sizeof(wchar) * 255);
 
-	u32* fat = vmm_alloc();
-	drive_read(fs->drive, lba_fats, 4096, fat);
+	char* name = kmalloc(sizeof(char) * 255);
+	memset(name, 0, sizeof(char) * 255);
+
+	char* search = path;
 
 	while (1) {
-		if (*path == '/') path++;
-		u32 len = 0;
-		while (*path != '\0' && *path != '/') { len++; path++; }
+		while (*search == '/') search++;
+		u32 namelen = 0;
+		while (search[namelen] != '/' && search[namelen] != '\0') namelen++;
 
-		char* dirname = kmalloc(len+1);
-		memcpy(dirname, path - len, len);
-		dirname[len] = 0;
-
-		bool found = false;
 		for (u32 i = 0; d[i].lfn.attr; i++) {
 			if (d[i].lfn.attr == FAT_ATTR_LFN) {
+				// Filenév
 				memcpy(wname+((d[i].lfn.order.number-1)*13), d[i].lfn.n0, 10);
 				memcpy(wname+((d[i].lfn.order.number-1)*13)+5, d[i].lfn.n1, 12);
 				memcpy(wname+((d[i].lfn.order.number-1)*13)+11, d[i].lfn.n2, 4);
-			} else if (d[i].lfn.attr & FAT_ATTR_DIR) {
-				char* name = kmalloc(wstrlen(wname)*2);
-				utf16_to_ascii(wname, name);
-
-				if (*path) {
-					if (!strcmp(name, dirname)) {
-						found = true;
-						drive_read(fs->drive, lba_data + d[i].std.first_cluster_lower * bpb->sectors_per_cluster, sizeof(fat32_entry), d);
-					}
-				}
-
-				memset(wname, 0, sizeof(wchar) * 255);
 			} else if (d[i].lfn.attr & FAT_ATTR_VOL_ID) {
-				// TODO: lehet hogy nem LFN
-				char* name = kmalloc(wstrlen(wname)*2);
-				utf16_to_ascii(wname, name);
-				printk("Volume ID: %s\n", name);
 
-				memset(wname, 0, sizeof(wchar) * 255);
 			} else {
-				char* name = kmalloc(wstrlen(wname)*2);
 				utf16_to_ascii(wname, name);
+				memset(wname, 0, sizeof(wchar) * 255);
 
-				if (!*path) {
-					// Nem maradt a path-ből, dirname tartalmazza a fájlnevet
-					if (!strcmp(name, dirname)) {
-						found = true;
-						printk("file martch: %d byte\n", d[i].std.filesize);
-						printk("1 cluster is %d bytes\n", bpb->sectors_per_cluster*bpb->bytes_per_sector);
-						// Első cluster olvasása
-						drive_read(fs->drive, lba_data + (d[i].std.first_cluster_lower-2) * bpb->sectors_per_cluster, bpb->sectors_per_cluster * 512, into);
-						into += bpb->sectors_per_cluster * bpb->bytes_per_sector;
-
-						for (u32 j = d[i].std.first_cluster_lower; fat[j] < 0x0FFFFFF8; j++) {
-							drive_read(fs->drive, lba_data + (fat[j]-2) * bpb->sectors_per_cluster, bpb->sectors_per_cluster * 512, into);
-							into += bpb->sectors_per_cluster * bpb->bytes_per_sector;
-						}
-
-						return;
-					}
+				if (!*search) {
+					error("Nincs ilyen file: %s", path);
+					while (1);
 				}
 
-				memset(wname, 0, sizeof(wchar) * 255);
+				// TODO
+				if (!strncmp(search, name, namelen) && !name[namelen]) {
+					if (d[i].std.attrs & FAT_ATTR_DIR) {
+						// Mappa
+						const u32 unit = bpb->sectors_per_cluster * 512;
+						u64 size = 1;
+						u32 cluster = d[i].std.first_cluster_lower | (d[i].std.first_cluster_higher << 16);
+						while ((fs->f32c->fat[cluster] & 0x0fffffff) != 0x0fffffff) size++;
+						printk("size: %d\n", size*512);
+
+						if (search[namelen]) {
+							if (size*unit > 512)
+								error("Mappa túl nagy, hiányozhatnak fájlok!");
+							drive_read(fs->drive, fs->f32c->lba_data + (d[i].std.first_cluster_lower-2)*bpb->sectors_per_cluster, 4096, d);
+						} else {
+							ret |= (u64)kmalloc(size*unit);
+							ret |= (u128)1 << 127;
+							ret |= (u128)(size*unit / sizeof(fat32_entry)) << 64;
+
+							drive_read(fs->drive, fs->f32c->lba_data + (d[i].std.first_cluster_lower-2)*bpb->sectors_per_cluster, size*unit, (void*)ret);
+
+							goto exit;
+						}
+					} else {
+						// Fájl
+						ret |= (u64)kmalloc(sizeof(fat32_entry));
+						memcpy((void*)ret, &d[i], sizeof(fat32_entry));
+						goto exit;
+					}
+
+					goto next;
+				}
 			}
 		}
-		if (!found) {
-			error("nincs ilyen fájl/mappa");
-			while (1);
+next:
+
+		search += namelen;
+	}
+
+exit:
+	kfree(d);
+	kfree(wname);
+	kfree(name);
+
+	return ret;
+}
+
+void fat32_read(partition* fs, char* path, void* into, u64 bytes) {
+	struct { fat32_entry* addr; u64 sz : 63; u8 dir : 1; } asd;
+	*(u128*)&asd = fat32_read_entry(fs, path);
+	if (asd.dir) {
+		errno = EISDIR;
+		error("Not a file");
+		return;
+	}
+
+	const u32 unit = fs->f32c->bpb->sectors_per_cluster;
+	for (u32 i = asd.addr->std.first_cluster_lower | (asd.addr->std.first_cluster_higher << 16);; i++) {
+		drive_read(fs->drive, fs->f32c->lba_data + (i-2) * unit, 512, into);
+		into += unit * fs->f32c->bpb->bytes_per_sector;
+
+		if ((fs->f32c->fat[i] & 0x0fffffff) >= 0x0ffffff8) break;
+	}
+}
+
+void fat32_readdir(partition* fs, char* path, dd** into) {
+	struct { fat32_entry* addr; u64 sz : 63; u8 dir : 1; } asd;
+	*(u128*)&asd = fat32_read_entry(fs, path);
+	if (!asd.dir) {
+		errno = ENOTDIR;
+		return;
+	} else {
+		wchar* wname = kmalloc(sizeof(wchar) * 255);
+		char* name = kmalloc(sizeof(char) * 255);
+
+		u32 num_files = 0;
+		for (u32 i = 0; asd.addr[i].lfn.attr && i < asd.sz; i++) {
+			if (!(asd.addr[i].lfn.attr & FAT_ATTR_LFN) && !(asd.addr[i].lfn.attr & FAT_ATTR_VOL_ID)) {
+				num_files++;
+			}
 		}
+
+		dd* p = kmalloc(sizeof(*p) + sizeof(p->entries[0]) * num_files);
+		p->num_entries = num_files;
+		
+		*into = p;
+
+		u32 entry = 0;
+		for (u32 i = 0; asd.addr[i].lfn.attr; i++) {
+			if (asd.addr[i].lfn.attr & FAT_ATTR_LFN) {
+				// Filenév
+				memcpy(wname+((asd.addr[i].lfn.order.number-1)*13), asd.addr[i].lfn.n0, 10);
+				memcpy(wname+((asd.addr[i].lfn.order.number-1)*13)+5, asd.addr[i].lfn.n1, 12);
+				memcpy(wname+((asd.addr[i].lfn.order.number-1)*13)+11, asd.addr[i].lfn.n2, 4);
+			} else if (asd.addr[i].lfn.attr & FAT_ATTR_VOL_ID) {
+
+			} else {
+				utf16_to_ascii(wname, name);
+				memset(wname, 0, sizeof(wchar) * 255);
+				if (!*name) {
+					// Ha nincs LFN név, használjuk a 8.3-asat
+					// strcpy(asd.addr[i].std.name, name);
+					u32 j = 0;
+					while (asd.addr[i].std.name[j] != ' ') {
+						name[j] = asd.addr[i].std.name[j];
+						j++;
+					}
+				}
+
+				p->entries[entry].name = kmalloc(strlen(name));
+				strcpy(name, p->entries[entry].name);
+
+				memset(name, 0, sizeof(char) * 255);
+				entry++;
+			}
+		}
+
+		kfree(name);
+		kfree(wname);
 	}
 }
 
 u64 fat32_get_size(partition* fs, char* path) {
-	fat32_bpb* bpb = vmm_alloc();
-	drive_read(fs->drive, fs->startlba, sizeof(fat32_bpb), bpb);
-
-	// Offszetek
-	u64 lba_fats = fs->startlba + bpb->reserved_sectors;
-	// Ha FAT12/16-ra portolnék: bpb->num_sectors_per_fat
-	u64 lba_root_dir = lba_fats + bpb->num_fats * bpb->ebpb_fat32.sectors_per_fat; // bpb->num_sectors_per_fat;
-	u64 lba_data = lba_root_dir + ((bpb->num_root_dir_entries * 32 + bpb->bytes_per_sector - 1) / bpb->bytes_per_sector);
-
-	fat32_entry* d = vmm_alloc();
-	drive_read(fs->drive, lba_root_dir, sizeof(fat32_entry), d);
-
-	wchar* wname = kmalloc(sizeof(wchar) * 255);
-	memset(wname, 0, sizeof(wchar) * 255);
-
-	u32* fat = vmm_alloc();
-	drive_read(fs->drive, lba_fats, 4096, fat);
-
-	while (1) {
-		if (*path == '/') path++;
-		u32 len = 0;
-		while (*path != '\0' && *path != '/') { len++; path++; }
-
-		char* dirname = kmalloc(len+1);
-		memcpy(dirname, path - len, len);
-		dirname[len] = 0;
-
-		bool found = false;
-		for (u32 i = 0; d[i].lfn.attr; i++) {
-			if (d[i].lfn.attr == FAT_ATTR_LFN) {
-				memcpy(wname+((d[i].lfn.order.number-1)*13), d[i].lfn.n0, 10);
-				memcpy(wname+((d[i].lfn.order.number-1)*13)+5, d[i].lfn.n1, 12);
-				memcpy(wname+((d[i].lfn.order.number-1)*13)+11, d[i].lfn.n2, 4);
-			} else if (d[i].lfn.attr & FAT_ATTR_DIR) {
-				char* name = kmalloc(wstrlen(wname)*2);
-				utf16_to_ascii(wname, name);
-
-				if (*path) {
-					if (!strcmp(name, dirname)) {
-						found = true;
-						drive_read(fs->drive, lba_data + d[i].std.first_cluster_lower * bpb->sectors_per_cluster, sizeof(fat32_entry), d);
-					}
-				}
-
-				memset(wname, 0, sizeof(wchar) * 255);
-			} else if (d[i].lfn.attr & FAT_ATTR_VOL_ID) {
-				// TODO: lehet hogy nem LFN
-				char* name = kmalloc(wstrlen(wname)*2);
-				utf16_to_ascii(wname, name);
-				printk("Volume ID: %s\n", name);
-
-				memset(wname, 0, sizeof(wchar) * 255);
-			} else {
-				char* name = kmalloc(wstrlen(wname)*2);
-				utf16_to_ascii(wname, name);
-
-				if (!*path) {
-					// Nem maradt a path-ből, dirname tartalmazza a fájlnevet
-					if (!strcmp(name, dirname)) {
-						found = true;
-						return d[i].std.filesize;
-					}
-				}
-
-				memset(wname, 0, sizeof(wchar) * 255);
-			}
-		}
-		if (!found) {
-			error("nincs ilyen fájl/mappa");
-			while (1);
-		}
+	struct { fat32_entry* addr; u64 sz : 63; u8 dir : 1; } asd;
+	*(u128*)&asd = fat32_read_entry(fs, path);
+	if (asd.dir) {
+		errno = EISDIR;
+		error("Not a file");
+		return 0;
+	} else {
+		return asd.addr->std.filesize;
 	}
 }
 

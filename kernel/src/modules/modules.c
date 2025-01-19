@@ -216,7 +216,7 @@ u32 module_link(void* m) {
 					to = get_kernel_symbol(search, m);
 				}
 
-				printk("reloc type %d: ", rela->r_info & 0xff);
+				// printk("reloc type %d: ", rela->r_info & 0xff);
 
 				// A: addend used to compute the value of the relocatable field.
 				// B: base address at which a shared object has been loaded into memory during execution. Generally, a shared object is built with a 0 base virtual address, but the execution address will be different.
@@ -267,7 +267,7 @@ u32 module_link(void* m) {
 					}
 				}
 
-				printk("[%s] %p\n", search, (u32)to);
+				// printk("[%s] %p\n", search, (u32)to);
 				u32* addr = m + toreloc->sh_offset + rela->r_offset;
 				*addr = (u32)to;
 			}
@@ -290,7 +290,7 @@ u32 module_link(void* m) {
 	for (u32 i = 0; i < e->e_shnum; i++) {
 		if (sh[i].sh_flags & SHF_ALLOC) {
 			// map_page(sh[i].sh_addr, pmm_alloc(), 0b11);
-			printk("[%s] %p -> %p; %d\n", strtab2 + sh[i].sh_name, m + sh[i].sh_offset, sh[i].sh_addr, sh[i].sh_size);
+			// printk("[%s] %p -> %p; %d\n", strtab2 + sh[i].sh_name, m + sh[i].sh_offset, sh[i].sh_addr, sh[i].sh_size);
 			memcpy((void*)sh[i].sh_addr, m + sh[i].sh_offset, sh[i].sh_size);
 		}
 	}

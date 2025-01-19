@@ -57,6 +57,13 @@ void vprintf(u8 (*putc)(const char* c),
 						while (num--) {
 							putc(str++);
 						}
+					} else {
+						num = num * 10 + (*fmt - '0');
+						char* str = va_arg(l, char*);
+						while (num--) {
+							putc(str++);
+						}
+						fmt++;
 					}
 
 					break;

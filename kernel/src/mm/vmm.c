@@ -62,7 +62,7 @@ void vmm_init() {
 	bm_set(&region_bm, 0, 1);
 }
 
-void* kmalloc(u64 bytes) {
+__attribute__((__malloc__)) void* kmalloc(u64 bytes) {
 	if (!bytes) return 0;
 
 	if (bytes < 16)
@@ -99,7 +99,8 @@ void* kmalloc(u64 bytes) {
 			} else if (l->len == bytes) {
 				l->sts = 1;
 			}
-
+			
+			kpremap((void*)a);
 			return (void*)a;
 		}
 

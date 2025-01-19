@@ -25,11 +25,13 @@ module: clean
 	$(CC) $(_CFLAGS) $(CSRCS) $(SSRCS) -c -o out/module.o
 	strip -R .eh_frame -R .rela.eh_frame --strip-debug out/module.o
 
-install:
-	cp out/module.o ../../../disk.img
+install: module
+	mcopy -n -o -i ../../../disk.img@@1048576 out/module.o ::modules/$(MOD_NAME).km
 
 clean:
-	@rm -rf out/*
-	@find src -type d -exec mkdir -p "out/{}" \;
-	@cp -r out/src/* out/ 2> /dev/null || :
-	@rm -rf out/src
+	rm -rf out/*
+	find src -type d -exec mkdir -p "out/{}" \;
+	cp -r out/src/* out/ 2> /dev/null || :
+	rm -rf out/src
+
+$(V).SILENT:

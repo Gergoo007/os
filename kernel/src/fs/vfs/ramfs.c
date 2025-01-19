@@ -8,6 +8,7 @@ void ramfs_register_module() {
 	fs_vtables[FSTYPE_RAMFS] = (fs_vtable) {
 		.fs_mount = ramfs_mount,
 		.fs_read = ramfs_read,
+		.fs_readdir = ramfs_readdir,
 		.fs_write = ramfs_write,
 		.fs_create = ramfs_create,
 		.fs_mkdir = ramfs_mkdir,
@@ -152,6 +153,50 @@ void ramfs_mkdir(partition* fs, char* path) {
 		for (u32 i = 0; i < d->num_entries; i++) {
 			if (!strcmp(dirname, d->entries[i].f.name)) {
 				d = (void*)&d->entries[i];
+			}
+		}
+	}
+}
+
+void ramfs_readdir(partition* fs, char* path, dd** into) {
+	ramfs_dir* d = &((ramfs_header*)(fs->drive))->root;
+
+	while (1) {
+		if (*path == '/') path++;
+		u32 len = 0;
+		while (*path != '\0' && *path != '/') {
+			len++;
+			path++;
+		}
+
+		char* dirname = kmalloc(len+1);
+		memcpy(dirname, path - len, len);
+		dirname[len] = 0;
+
+		if (!*path) {
+			// dirname: megnyitandó mappa neve
+			for (u32 i = 0; i < d->num_entries; i++) {
+				if (!strcmp(dirname, d->entries[i].f.name)) {
+					d = (void*)&d->entries[i];
+					break;
+				}
+			}
+			u32 num_entries = d->num_entries;
+			*into = kmalloc(sizeof(dd) + sizeof((*into)->entries[0]) * num_entries);
+			for (u32 i = 0; i < num_entries; i++) {
+				kfree((*into)->entries[i].name);
+				(*into)->entries[i].name = kmalloc(strlen(d->entries[i].f.name));
+				strcpy(d->entries[i].f.name, (*into)->entries[i].name);
+				(*into)->entries[i].attrs = 0;
+			}
+
+			break;
+		}
+
+		for (u32 i = 0; i < d->num_entries; i++) {
+			if (!strcmp(dirname, d->entries[i].f.name)) {
+				d = (void*)&d->entries[i];
+				break;
 			}
 		}
 	}
