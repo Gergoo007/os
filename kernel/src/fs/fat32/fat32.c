@@ -80,6 +80,27 @@ u128 fat32_read_entry(partition* fs, char* path) {
 		u32 namelen = 0;
 		while (search[namelen] != '/' && search[namelen] != '\0') namelen++;
 
+		// Ha / jelekből áll a path akkor a rootot kell olvasni
+		if (!namelen) {
+			const u32 unit = bpb->sectors_per_cluster * 512;
+			u64 size = 1;
+			u32 cluster = 1;
+			for (u32 c = cluster; (fs->f32c->fat[c] & 0x0fffffff) != 0x0fffffff; c++)
+				size++;
+
+			ret |= (u64)kmalloc(size*unit);
+			ret |= (u128)1 << 127;
+			ret |= (u128)(size*unit / sizeof(fat32_entry)) << 64;
+
+			for (u32 c = cluster; 1; c++) {
+				drive_read(fs->drive, fs->f32c->lba_data + (c-1) * bpb->sectors_per_cluster, size*unit, (void*)ret);
+				if ((fs->f32c->fat[c] & 0x0fffffff) == 0x0fffffff)
+					break;
+			}
+
+			goto exit;
+		}
+
 		for (u32 i = 0; d[i].lfn.attr; i++) {
 			if (d[i].lfn.attr == FAT_ATTR_LFN) {
 				// Filenév
@@ -104,8 +125,9 @@ u128 fat32_read_entry(partition* fs, char* path) {
 						const u32 unit = bpb->sectors_per_cluster * 512;
 						u64 size = 1;
 						u32 cluster = d[i].std.first_cluster_lower | (d[i].std.first_cluster_higher << 16);
-						while ((fs->f32c->fat[cluster] & 0x0fffffff) != 0x0fffffff) size++;
-						printk("size: %d\n", size*512);
+						// while ((fs->f32c->fat[cluster] & 0x0fffffff) != 0x0fffffff) size++;
+						for (u32 c = cluster; (fs->f32c->fat[c] & 0x0fffffff) != 0x0fffffff; c++)
+							size++;
 
 						if (search[namelen]) {
 							if (size*unit > 512)
@@ -115,8 +137,15 @@ u128 fat32_read_entry(partition* fs, char* path) {
 							ret |= (u64)kmalloc(size*unit);
 							ret |= (u128)1 << 127;
 							ret |= (u128)(size*unit / sizeof(fat32_entry)) << 64;
+							void* buf = (void*)(u64)ret;
 
-							drive_read(fs->drive, fs->f32c->lba_data + (d[i].std.first_cluster_lower-2)*bpb->sectors_per_cluster, size*unit, (void*)ret);
+							for (u32 c = cluster; 1; c++) {
+								// printk("%d vs %d\n", d[i].std.first_cluster_lower-2, c-2);
+								drive_read(fs->drive, fs->f32c->lba_data + (c-2) * bpb->sectors_per_cluster, size*unit, buf);
+								buf += size*unit;
+								if ((fs->f32c->fat[c] & 0x0fffffff) == 0x0fffffff)
+									goto exit;
+							}
 
 							goto exit;
 						}
@@ -181,7 +210,7 @@ void fat32_readdir(partition* fs, char* path, dd** into) {
 
 		dd* p = kmalloc(sizeof(*p) + sizeof(p->entries[0]) * num_files);
 		p->num_entries = num_files;
-		
+
 		*into = p;
 
 		u32 entry = 0;

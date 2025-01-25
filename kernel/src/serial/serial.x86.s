@@ -68,6 +68,27 @@ sputc:
 
 	mov $0x3f8, %dx
 	mov (%rdi), %al
+	
+	cmp $'\n', %al
+	jne .notlf
+
+	mov $'\n', %al
+	outb %al, %dx
+
+	# El lett küldve az előző karakter?
+	mov $0x3fd, %dx
+.wait3:
+	inb %dx, %al
+	and $0x20, %al
+	cmp $0, %al
+	je .wait3
+
+	mov $0x3f8, %dx
+	mov $'\r', %al
+	outb %al, %dx
+	ret
+
+.notlf:
 	outb %al, %dx
 	mov $1, %al
 	mov $1, %ah

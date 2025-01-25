@@ -5,7 +5,7 @@
 #include <util/string.h>
 #include <util/mem.h>
 #include <gfx/console.h>
-#include <dtree/drives.h>
+#include <devmgr/devmgr.h>
 #include <config.h>
 
 u32 num_mnts;
@@ -74,7 +74,11 @@ dd* vfs_readdir(char* path) {
 	}
 
 	dd* f;
-	fs_vtables[mnts[longest_match].p->fstype].fs_readdir(mnts[longest_match].p, path + mnts[longest_match].path_length, &f);
+	if (!*(path + mnts[longest_match].path_length)) {
+		fs_vtables[mnts[longest_match].p->fstype].fs_readdir(mnts[longest_match].p, "/", &f);
+	} else {
+		fs_vtables[mnts[longest_match].p->fstype].fs_readdir(mnts[longest_match].p, path + mnts[longest_match].path_length, &f);
+	}
 	f->attrs = 0;
 	f->vt = &fs_vtables[mnts[longest_match].p->fstype];
 	f->fs = mnts[longest_match].p;

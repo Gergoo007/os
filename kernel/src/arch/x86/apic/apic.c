@@ -1,10 +1,10 @@
 #include <arch/x86/apic/apic.h>
 #include <arch/arch.h>
 #include <gfx/console.h>
-#include <dtree/tree.h>
 #include <serial/serial.h>
 #include <acpi/lai/helpers/sci.h>
 #include <mm/paging.h>
+#include <mm/vmm.h>
 
 volatile lapic_regs* base;
 
@@ -34,48 +34,26 @@ void apic_process_madt(madt* m) {
 	while (size) {
 		switch (entry->type) {
 			case MADT_IOAPIC: {
-				// printk("ioapic @ %p\n",entry->e_ioapic.ioapic_addr);
-				// ioapics[num_ioapics].base = entry->e_ioapic.ioapic_addr | 0xffff800000000000;
-				// ioapics[num_ioapics].gsi_base = entry->e_ioapic.gsi_base;
-				// ioapics[num_ioapics].id = entry->e_ioapic.ioapic_id;
-				// num_ioapics++;
-				dtree_ioapic dev = {
-					.h.num_children = 0,
-					.h.parent = 0,
-					.h.type = DEV_IOAPIC,
-
-					.base = (void*)VIRTUAL((u64)entry->e_ioapic.ioapic_addr),
-					.gsi_base = entry->e_ioapic.gsi_base,
-					.id = entry->e_ioapic.ioapic_id,
-				};
-				dtree_add_chipset_dev((dtree_dev*)&dev);
+				computer->ioapics = krealloc(computer->ioapics, (computer->num_ioapics + 1) * sizeof(dev_ioapic));
+				computer->ioapics[computer->num_ioapics].hdr.handle = VIRTUAL((void*)(u64)entry->e_ioapic.ioapic_addr);
+				computer->ioapics[computer->num_ioapics].gsi_base = entry->e_ioapic.gsi_base;
+				computer->ioapics[computer->num_ioapics].id = entry->e_ioapic.ioapic_id;
+				computer->num_ioapics++;
 				break;
 			}
 
 			case MADT_IOAPIC_OVERRIDE: {
-				// printk("%d -> %d\n", entry->e_ioapic_overr.gsi, entry->e_ioapic_overr.irq_src);
 				ioapic_irqs[entry->e_ioapic_overr.irq_src] = entry->e_ioapic_overr.gsi;
 				break;
 			}
 
 			case MADT_LAPIC: {
-				// lapic_base = m->lapic | 0xffff800000000000;
-				// cpus[num_cpus].acpi_id = entry->e_lapic.acpi_cpu_id;
-				// cpus[num_cpus].apic_id = entry->e_lapic.apic_id;
-				// cpus[num_cpus].capable = entry->e_lapic.cpu_online_capable;
-				// cpus[num_cpus].enabled = entry->e_lapic.cpu_enabled;
-				// num_cpus++;
-				dtree_cpu dev = {
-					.h.num_children = 0,
-					.h.parent = 0,
-					.h.type = DEV_CPU,
-
-					.acpi_id = entry->e_lapic.acpi_cpu_id,
-					.apic_id = entry->e_lapic.apic_id,
-					.enabled = entry->e_lapic.cpu_enabled,
-					.capable = entry->e_lapic.cpu_online_capable,
-				};
-				dtree_add_chipset_dev((dtree_dev*)&dev);
+				computer->cpus = krealloc(computer->cpus, (computer->num_cpus + 1) * sizeof(dev_cpu));
+				computer->cpus[computer->num_cpus].acpi_id = entry->e_lapic.acpi_cpu_id;
+				computer->cpus[computer->num_cpus].apic_id = entry->e_lapic.apic_id;
+				computer->cpus[computer->num_cpus].online_capable = entry->e_lapic.cpu_online_capable;
+				computer->cpus[computer->num_cpus].online = entry->e_lapic.cpu_enabled;
+				computer->num_cpus++;
 				break;
 			}
 		}

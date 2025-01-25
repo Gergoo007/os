@@ -13,7 +13,7 @@ SOBJS := $(patsubst %.s,out/%.s.o,$(SSRCS))
 _CFLAGS := $(CFLAGS) -mgeneral-regs-only -ffreestanding -nostdlib -nostdinc \
 	-Isrc -xc -std=gnu23 -Wall -Wextra -Wshadow -Wno-address-of-packed-member \
 	-Wno-unused-parameter -fno-stack-protector -mno-red-zone -O0 -g -Wno-multichar \
-	-Wno-packed-bitfield-compat -msse -msse2
+	-Wno-packed-bitfield-compat -msse -msse2 -fno-omit-frame-pointer
 _ASFLAGS :=
 _LDFLAGS := -T ldscript -z max-page-size=0x1000 --no-gc-sections
 

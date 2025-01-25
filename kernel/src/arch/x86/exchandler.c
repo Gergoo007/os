@@ -14,6 +14,8 @@
 
 #include <ps2/kbd.h>
 
+#include <util/stacktrace.h>
+
 #define print_reg(st, reg) printk("%s: %p ", #reg, st->reg)
 #define sprint_reg(st, reg) sprintk("%s: %p ", #reg, st->reg)
 
@@ -113,6 +115,9 @@ end:
 	printk("\n\r");
 	print_reg(regs, rsp); print_reg(regs, rbp);
 	printk("\n\r");
+
+	printk("Stacktrace: \n");
+	stacktrace(regs->rip, (void*)regs->rbp);
 
 	while (1) asm volatile ("hlt");
 }

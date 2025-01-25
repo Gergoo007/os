@@ -4,7 +4,7 @@
 #include <mm/pmm.h>
 #include <mm/paging.h>
 #include <util/mem.h>
-#include <dtree/tree.h>
+#include <devmgr/devmgr.h>
 #include <serial/serial.h>
 
 void ahci_stop_cmds(hba_port* port) {
@@ -25,9 +25,9 @@ void ahci_start_cmds(hba_port* port) {
 	while (!port->cmd.fis_rx_enable);
 }
 
-void ahci_init(dtree_pci_dev* hc) {
-	hba_mem* regs = (hba_mem*)VIRTUAL(pci_bar_addr(0, hc->bus, hc->dev, hc->fun, 5));
-	hc->handle = (void*)regs;
+void ahci_init(dev_misc* hc) {
+	hba_mem* regs = (hba_mem*)VIRTUAL(pci_bar_addr(0, hc->hdr.pci_addr.bus, hc->hdr.pci_addr.dev, hc->hdr.pci_addr.fun, 5));
+	hc->hdr.handle = (void*)regs;
 
 	for (u32 port = 0; port < 32; port++) {
 		// Port nincs jelen a kontrollerben
@@ -94,16 +94,16 @@ void ahci_init(dtree_pci_dev* hc) {
 		if (regs->ports[i].sig == AHCI_SIG_SATA) {
 			// Eszköz hozzáadása a jegyzékhez
 			ata_identity* id = ahci_identify(&(regs->ports[i]));
-			dtree_drive d = {
-				.h = {
+			dev_drive d = {
+				.hdr = {
 					.num_children = 0,
-					.parent = hc->h.index,
+					.parent = (void*)hc,
 					.type = DEV_ATA,
 				},
-				.identity = id,
-				.port = i,
+				// .identity = id,
+				.hdr.slot = i,
 			};
-			dtree_add_drive(&d);
+			dev_add(hc, &d);
 		} else if (regs->ports[i].sig == AHCI_SIG_SATAPI) {
 			
 		}
@@ -121,118 +121,8 @@ u32 ahci_find_cmd_slot(hba_port* port) {
 	return -1;
 }
 
-// void ahci_read(dtree_pci_dev* dev, u32 pnum, u64 start, u64 count, void* buf) {
-// 	hba_port* port = &((hba_mem*)dev->handle)->ports[pnum];
-// 	port->int_sts.value = (u32)-1;
-
-// 	u32 slot = ahci_find_cmd_slot(port);
-
-// 	hba_cmd_hdr* hdr = (hba_cmd_hdr*)(port->cmd_listl | ((u64)port->cmd_listu << 32));
-// 	hdr += slot;
-// 	VIRTUAL(hdr)->fis_len = sizeof(fis_reg_h2d) / sizeof(u32);
-// 	VIRTUAL(hdr)->write = 0;
-// 	if (count % 8 == 0) {
-// 		VIRTUAL(hdr)->prdt_num_entries = count / 8;
-// 	} else {
-// 		VIRTUAL(hdr)->prdt_num_entries = count / 8 + 1;
-// 	}
-
-// 	hba_cmd_table* table = (hba_cmd_table*)(VIRTUAL(hdr)->cmd_table_desc_l | ((u64)VIRTUAL(hdr)->cmd_table_desc_u << 32));
-// 	memset((void*)VIRTUAL(table), 0, sizeof(hba_cmd_table) + (VIRTUAL(hdr)->prdt_num_entries-1) * sizeof(hba_prdt_entry));
-
-// 	u32 i = 0;
-// 	for (; i < (u32)VIRTUAL(hdr)->prdt_num_entries-1; i++) {
-// 		VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf) & 0xffffffff;
-// 		VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf) << 32;
-
-// 		VIRTUAL(table)->prdt_entry[i].num_bytes = 8 * 512 - 1;
-// 		VIRTUAL(table)->prdt_entry[i].ioc = 1;
-
-// 		buf += 0x1000;
-// 		count -= 8;
-// 	}
-
-// 	VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf) & 0xffffffff;
-// 	VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf) << 32;
-
-// 	VIRTUAL(table)->prdt_entry[i].num_bytes = count * 512 - 1;
-
-// 	if ((u64)buf + count * 512 > ((u64)buf | 0x0fff)) {
-// 		// Mennyivel csordul át a következő page-re
-// 		u64 overflow = ((u64)buf + 512) & 0x0fff;
-
-// 		printk("enny az overfl. %d\n", overflow);
-		
-// 		if (((u64)buf & 0xffffc00000000000) == 0xffffc00000000000) {
-// 			// printk("overflow %04x; buf %p\n", overflow, buf);
-// 			VIRTUAL(table)->prdt_entry[i].num_bytes = (count * 512 - 1) - overflow;
-// 			VIRTUAL(table)->prdt_entry[i].ioc = 0;
-
-// 			VIRTUAL(hdr)->prdt_num_entries++;
-// 			i++;
-
-// 			VIRTUAL(table)->prdt_entry[i].data_base_addrl = (u64)paging_lookup((u64)buf+(count * 512)-overflow) & 0xffffffff;
-// 			VIRTUAL(table)->prdt_entry[i].data_base_addru = (u64)paging_lookup((u64)buf+(count * 512)-overflow) << 32;
-// 			VIRTUAL(table)->prdt_entry[i].num_bytes = overflow-1;
-// 			VIRTUAL(table)->prdt_entry[i].ioc = 1;
-
-// 			buf += 512;
-// 		} else {
-// 			warn("vmm_alloc deprecated, kmalloc jobb");
-// 		}
-// 	}
-
-// 	VIRTUAL(table)->prdt_entry[i].ioc = 1;
-
-// 	// extern u32 dump;
-// 	// if (dump) {
-// 		sprintk("======PRDT DUMP=========\n\r");
-// 		for (u32 j = 0; j < VIRTUAL(hdr)->prdt_num_entries; j++) {
-// 			sprintk("ent #%d\n\r", j);
-// 			sprintk("addr %p\n\r", VIRTUAL(table)->prdt_entry[j].data_base_addrl | ((u64)(VIRTUAL(table)->prdt_entry[j].data_base_addru) << 32));
-// 			sprintk("bytes %d\n\r", VIRTUAL(table)->prdt_entry[j].num_bytes);
-// 		}
-// 		sprintk("======PRDT DUMP=========\n\r");
-// 	// }
-
-// 	// Setup parancs
-// 	fis_reg_h2d* cmd_fis = (fis_reg_h2d*)table->cmd_fis;
-// 	MAKE_VIRTUAL(cmd_fis);
-// 	cmd_fis->type = AHCI_FIS_REG_H2D;
-// 	cmd_fis->cmd_ctrl = 1;
-// 	cmd_fis->cmd = ATA_READ_DMA_EX;
-
-// 	cmd_fis->lba0 = (u8) (start);
-// 	cmd_fis->lba1 = (u8) (start >> 8);
-// 	cmd_fis->lba2 = (u8) (start >> 16);
-// 	cmd_fis->dev = 1 << 6; // Ez elvileg LBA mód
-
-// 	cmd_fis->lba3 = (u8) (start >> 24);
-// 	cmd_fis->lba4 = (u8) (start >> 32);
-// 	cmd_fis->lba5 = (u8) (start >> 48);
-
-// 	cmd_fis->countl = count & 0xff;
-// 	cmd_fis->counth = (count >> 8) & 0xff;
-
-// 	// Meg kell várni amíg a port szabad lesz
-// 	u64 spin = 0;
-// 	while ((port->task_file_data & (ATA_DEV_BUSY | ATA_DEV_DRQ)) && spin < 1000000) {
-// 		spin++;
-// 	}
-// 	if (spin == 1000000) error("Port elakadt!");
-
-// 	port->cmd_issue = 1 << slot;
-
-// 	while (1) {
-// 		if ((port->cmd_issue & (1 << slot)) == 0) break;
-// 		if (port->int_sts.task_file_error) { error("ATA read task file error 1"); break; }
-// 	}
-
-// 	if (port->int_sts.task_file_error) error("ATA read task file error 2");
-// }
-
-void ahci_read(dtree_pci_dev* dev, u32 pnum, u64 start, u64 bytes, void* buf) {
-	hba_port* port = &((hba_mem*)dev->handle)->ports[pnum];
+void ahci_read(dev_misc* dev, u32 pnum, u64 start, u64 bytes, void* buf) {
+	hba_port* port = &((hba_mem*)dev->hdr.handle)->ports[pnum];
 	port->int_sts.value = (u32)-1;
 
 	u32 slot = ahci_find_cmd_slot(port);

@@ -2,7 +2,8 @@
 
 #include <util/types.h>
 #include <util/attrs.h>
-#include <dtree/tree.h>
+#include <devmgr/devmgr.h>
+#include <devmgr/drives.h>
 
 #define VFS_LIMIT_FILENAME 256
 

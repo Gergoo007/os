@@ -58,7 +58,18 @@ void con_backspace() {
 
 }
 
-void update_cursor() {
+void con_newline() {
+	if (con_cy > fb_main.height - (font.glyph_height + 1) * 2) {
+		const u32 line_height = font.glyph_height + 1;
+
+		// Minden egy sorral feljebb csúsztatása
+		memcpy((void*)FB_VADDR, (void*)FB_VADDR + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
+	} else {
+		con_cy += font.glyph_height + 1;
+	}
+}
+
+void con_update_cursor() {
 	// Betűtípusban hol kezdődik a betű alulról
 	u8 _height = 4;
 
@@ -102,7 +113,8 @@ void cputc(char c) {
 				for (u8 x = 0; x < font.glyph_width; x++)
 					fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
 
-			con_cy += font.glyph_height + 1;
+			// con_cy += font.glyph_height + 1;
+			con_newline();
 			con_cx = 0;
 
 			fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, 0x00ffffff);
@@ -138,11 +150,12 @@ void cputc(char c) {
 			}
 		}
 
-		con_cy += font.glyph_height + 1;
+		// con_cy += font.glyph_height + 1;
+		con_newline();
 		con_cx = 0;
 	}
 
-	update_cursor();
+	con_update_cursor();
 
 	cputglyph(c);
 }

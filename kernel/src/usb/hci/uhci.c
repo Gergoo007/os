@@ -111,7 +111,7 @@ void uhci_control(u8 pid, u16 portio, uhci* hci, u8 addr, u8 endp, void* outbuf,
 	outw(0xffff, hci->io + USTS);
 }
 
-u8 uhci_init_port(u16 portio, u16 io, dtree_pci_dev* pcidev) {
+u8 uhci_init_port(u16 portio, u16 io, dev_misc* pcidev) {
 	uport p = { .uport = inw(portio) };
 
 	uhci_reset_port(portio);
@@ -138,7 +138,7 @@ u8 uhci_init_port(u16 portio, u16 io, dtree_pci_dev* pcidev) {
 
 	request.raw = USB_GET_DESC_DEVICE;
 
-	if ((u64)PHYSICAL(((uhci*)(pcidev->handle))->tdlist) & 0xffffffff00000000)
+	if ((u64)PHYSICAL(((uhci*)(pcidev->hdr.handle))->tdlist) & 0xffffffff00000000)
 		error("tdlist selejt");
 
 	// Reset recovery
@@ -157,33 +157,33 @@ u8 uhci_init_port(u16 portio, u16 io, dtree_pci_dev* pcidev) {
 	request.wIndex = 0;
 	request.wValue = 8;
 	request.wLength = 0;
-	uhci_control(UPID_OUT, portio, pcidev->handle, 0, 0, &dev, 0, 0);
+	uhci_control(UPID_OUT, portio, pcidev->hdr.handle, 0, 0, &dev, 0, 0);
 
 	request.raw = USB_GET_DESC_DEVICE;
-	uhci_control(UPID_IN, portio, pcidev->handle, 8, 0, &dev, dev.bMaxPacketSize, 18);
+	uhci_control(UPID_IN, portio, pcidev->hdr.handle, 8, 0, &dev, dev.bMaxPacketSize, 18);
 
 	// A stringek bekérése
 
 	// Végül hozzáadom az eszközt a listához
-	dtree_usb_dev udev = {
-		.h.num_children = 0,
-		.h.parent = pcidev->h.index,
-		.vendor = "Hello world",
-	};
-	if (dev.bDeviceClass == 0 && dev.bDeviceSubclass == 0)
-		udev.h.type = DEV_USB_HID;
-	else
-		udev.h.type = DEV_USB_MISC;
-	dtree_add_usb_dev(&udev);
+	// dtree_usb_dev udev = {
+	// 	.h.num_children = 0,
+	// 	.h.parent = pcidev->h.index,
+	// 	.vendor = "Hello world",
+	// };
+	// if (dev.bDeviceClass == 0 && dev.bDeviceSubclass == 0)
+	// 	udev.h.type = DEV_USB_HID;
+	// else
+	// 	udev.h.type = DEV_USB_MISC;
+	// dtree_add_usb_dev(&udev);
 
 	return 1;
 }
 
-void uhci_init(dtree_pci_dev* dev) {
+void uhci_init(dev_misc* dev) {
 	uhci* handle = kmalloc(sizeof(uhci));
-	u16 io = pci_bar_addr(0, dev->bus, dev->dev, dev->fun, 4);
+	u16 io = pci_bar_addr(0, dev->hdr.pci_addr.bus, dev->hdr.pci_addr.dev, dev->hdr.pci_addr.fun, 4);
 
-	dev->handle = handle;
+	dev->hdr.handle = handle;
 	handle->io = io;
 	handle->qhlist = vmm_alloc();
 	handle->tdlist = vmm_alloc();

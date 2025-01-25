@@ -1,6 +1,7 @@
 #pragma once
 
 #include <acpi/acpi.h>
+#include <devmgr/devmgr.h>
 
 enum {
 	PCI_SATA = 0x0106,
@@ -11,7 +12,7 @@ enum {
 #define PCI_CFG_ADDR 0xcf8
 #define PCI_CFG_DATA 0xcfc
 
-typedef union _attr_packed pci_hdr {
+volatile typedef union _attr_packed pci_hdr {
 	struct _attr_packed {
 		u16 vendor;
 		u16 product;
@@ -19,8 +20,8 @@ typedef union _attr_packed pci_hdr {
 		u16 status;
 		u8 rev_id;
 		u8 prog_if;
-		union {
-			struct {
+		union _attr_packed {
+			struct _attr_packed {
 				u8 subclass;
 				u8 class;
 			};
@@ -81,6 +82,25 @@ typedef union _attr_packed pci_hdr {
 		u32 dword[16];
 	};
 } pci_hdr;
+
+typedef struct dev_misc_pci_data {
+	u16 vendor;
+	u16 product;
+	u8 prog_if;
+	union _attr_packed {
+		struct _attr_packed {
+			u8 subclass;
+			u8 class;
+		};
+		u16 combclass;
+	};
+	u8 hdr_type;
+	u32 bars[6];
+} dev_misc_pci_data;
+
+typedef struct dev_pcibus {
+	dev_hdr hdr;
+} dev_pcibus;
 
 extern mcfg* mc;
 

@@ -3,7 +3,7 @@
 #include <pci/pci.h>
 #include <util/types.h>
 #include <util/attrs.h>
-#include <dtree/tree.h>
+#include <devmgr/devmgr.h>
 
 enum {
 	UCMD = 0x00,
@@ -138,4 +138,4 @@ typedef struct uhci {
 	u16 io;
 } uhci;
 
-void uhci_init(dtree_pci_dev* dev);
+void uhci_init(dev_misc* dev);

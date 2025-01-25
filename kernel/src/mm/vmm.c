@@ -215,7 +215,7 @@ void* krealloc(void* p, u64 new) {
 			// nem kell hogy történjen semmi a 16 byte-os igazítás miatt
 			if ((new - oldsize) < 16) return p;
 
-			if (l->len < new) {
+			if (oldsize < new) {
 				// Meg kell nagyobbítani
 				if (l->next) {
 					vmem* next = l->next;
@@ -244,29 +244,30 @@ void* krealloc(void* p, u64 new) {
 						return p2;
 					}
 				}
-			} else if (l->len > new) {
-				// Csökkenteni kell
-				if (l->next) {
-					if (l->next->sts == 0) {
-						// Az utána lévő szegmens szabad
-						l->next->len += oldsize - new;
-						l->len = new;
-						return p;
-					} else {
-						// Nem szabad a következő, újat kell csinálni a kettő közé
-						vmem* newlink = new_link();
-						newlink->len = oldsize - new;
-						newlink->sts = 0;
+			} else if (oldsize > new) {
+				// // Csökkenteni kell
+				// if (l->next) {
+				// 	if (l->next->sts == 0) {
+				// 		// Az utána lévő szegmens szabad
+				// 		l->next->len += oldsize - new;
+				// 		l->len = new;
+				// 		return p;
+				// 	} else {
+				// 		// Nem szabad a következő, újat kell csinálni a kettő közé
+				// 		vmem* newlink = new_link();
+				// 		newlink->len = oldsize - new;
+				// 		newlink->sts = 0;
 						
-						l->next->next->prev = newlink;
-						newlink->prev = l;
-						newlink->next = l->next->next;
-						l->next = newlink;
+				// 		l->next->next->prev = newlink;
+				// 		newlink->prev = l;
+				// 		newlink->next = l->next->next;
+				// 		l->next = newlink;
 
-						l->len = new;
-						return p;
-					}
-				}
+				// 		l->len = new;
+				// 		return p;
+				// 	}
+				// }
+				return (void*)a;
 			}
 		}
 

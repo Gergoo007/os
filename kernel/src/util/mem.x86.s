@@ -16,10 +16,41 @@ memset:
 # %rdi: amoda
 # %rsi: innen
 # %rdx: ennyit
-memcpy:
-	mov %rdx, %rcx
-	rep movsb
-	ret
+// memcpy:
+// 	push %rdx
+// 	# Kezdés csak egy pár byte-al,
+// 	# hogy 8 byte-ra legyen igazítva legalább a source
+// 	# Aztán jön a 64 bit movesq
+// 	# Aztán a maradék pár byte
+// 	## %rax: ennyi byte-al kezdünk
+// 	mov %rsi, %rax
+// 	and $0b111, %rax
+// 	mov %rax, %rcx
+// 	sub %rcx, (%rsp) # Ennyi byte-al kevesebbet kell elintézni
+// 	mov %rcx, %r8
+// 	rep movsb
+	
+// 	add %r8, %rdi
+// 	add %r8, %rsi
+
+// 	# 64 bit move
+// 	mov (%rsp), %rcx
+// 	mov %rcx, %rax
+// 	and $0b111, %rax
+// 	# Mostantól %rax tartalmazza a maradékot
+// 	mov %rcx, %r8
+// 	shl $3, %rcx # count /= 8;
+// 	rep movsq
+
+// 	add %r8, %rdi
+// 	add %r8, %rsi
+
+// 	# Maradék másolása
+// 	mov %rax, %rcx
+// 	rep movsb
+
+// 	pop %rdx
+// 	ret
 
 # %rdi: lhs
 # %rsi: rhs

@@ -2,7 +2,7 @@
 
 #include <pci/pci.h>
 #include <util/attrs.h>
-#include <dtree/tree.h>
+#include <devmgr/devmgr.h>
 
 enum {
 	IOAPIC_IDENT = 0x00,
@@ -38,12 +38,11 @@ typedef union _attr_packed {
 	u64 raw;
 } ioapic_entry;
 
-typedef struct _attr_packed dtree_ioapic {
-	dtree_hdr h;
-	void* base;
+typedef struct _attr_packed dev_ioapic {
+	dev_hdr hdr;
 	u32 gsi_base;
 	u32 id;
-} dtree_ioapic;
+} dev_ioapic;
 
 extern u32 ioapic_irqs[];
 

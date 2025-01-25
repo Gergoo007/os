@@ -109,6 +109,7 @@ void* laihost_scan(const char* othersig, size_t index) {
 		}
 	}
 
+	// warn("LAI requested non-existent %.4s", othersig);
 	return 0;
 }
 

@@ -5,6 +5,7 @@
 #include <acpi/lai/core.h>
 #include <acpi/acpi.h>
 #include <arch/x86/clocks/tsc.h>
+#include <util/stacktrace.h>
 
 void laihost_free(void* a, size_t s) {
 	kfree(a);
@@ -20,7 +21,13 @@ void* laihost_realloc(void* old, size_t newsize, size_t oldsize) {
 }
 
 _attr_noret void laihost_panic(const char* fmt) {
-	error(fmt);
+	u32 old = con_fg;
+	con_fg = 0x00ff0000;
+	printk(fmt);
+	con_fg = old;
+	void* rbp;
+	asm volatile ("movq %%rbp, %0" : "=r"(rbp));
+	stacktrace(0, (void*)rbp);
 	while (1);
 }
 
