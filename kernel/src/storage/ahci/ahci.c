@@ -94,16 +94,19 @@ void ahci_init(dev_misc* hc) {
 		if (regs->ports[i].sig == AHCI_SIG_SATA) {
 			// Eszköz hozzáadása a jegyzékhez
 			ata_identity* id = ahci_identify(&(regs->ports[i]));
-			dev_drive d = {
-				.hdr = {
-					.num_children = 0,
-					.parent = (void*)hc,
-					.type = DEV_ATA,
-				},
-				// .identity = id,
-				.hdr.slot = i,
-			};
-			dev_add(hc, &d);
+			dev_drive* d = kmalloc(sizeof(dev_drive));
+			d->hdr.num_children = 0;
+			d->hdr.parent = (void*)hc;
+			d->hdr.type = DEV_ATA;
+			d->hdr.slot = i;
+
+			if (id->ExtendedNumberOfUserAddressableSectors)
+				d->sectors = id->ExtendedNumberOfUserAddressableSectors;
+			else if (id->UserAddressableSectors)
+				d->sectors = id->UserAddressableSectors;
+			else
+				error("Drive has no size specified");
+			dev_add(hc, d);
 		} else if (regs->ports[i].sig == AHCI_SIG_SATAPI) {
 			
 		}
@@ -202,9 +205,9 @@ void ahci_read(dev_misc* dev, u32 pnum, u64 start, u64 bytes, void* buf) {
 }
 
 ata_identity* ahci_identify(hba_port* port) {
-	ata_identity* id = vmm_alloc();
+	ata_identity* id = kmalloc(sizeof(ata_identity));
 	if (port->sig == AHCI_SIG_SATAPI) {
-		memset(id, 0, 0x1000);
+		memset(id, 0, sizeof(ata_identity));
 		return id;
 	}
 
@@ -221,8 +224,8 @@ ata_identity* ahci_identify(hba_port* port) {
 	hba_cmd_table* table = VIRTUAL((hba_cmd_table*)(hdr->cmd_table_desc_l | ((u64)hdr->cmd_table_desc_u << 32)));
 	memset((void*)table, 0, sizeof(hba_cmd_table) + (hdr->prdt_num_entries-1) * sizeof(hba_prdt_entry));
 
-	table->prdt_entry[0].data_base_addrl = (u64)PHYSICAL(id) & 0xffffffff;
-	table->prdt_entry[0].data_base_addru = (u64)PHYSICAL(id) << 32;
+	table->prdt_entry[0].data_base_addrl = (u64)paging_lookup((u64)id) & 0xffffffff;
+	table->prdt_entry[0].data_base_addru = (u64)paging_lookup((u64)id) << 32;
 	table->prdt_entry[0].num_bytes = (1 << 9) - 1;
 	table->prdt_entry[0].ioc = 1;
 

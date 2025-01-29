@@ -183,6 +183,7 @@ void ramfs_readdir(partition* fs, char* path, dd** into) {
 			}
 			u32 num_entries = d->num_entries;
 			*into = kmalloc(sizeof(dd) + sizeof((*into)->entries[0]) * num_entries);
+			(*into)->num_entries = num_entries;
 			for (u32 i = 0; i < num_entries; i++) {
 				kfree((*into)->entries[i].name);
 				(*into)->entries[i].name = kmalloc(strlen(d->entries[i].f.name));

@@ -22,17 +22,17 @@
 #include <fs/fat32/fat32.h>
 #include <fs/vfs/ramfs.h>
 #include <modules/modules.h>
+#include <storage/ahci/ahci.h>
 
 extern _attr_noret void khang();
 extern u16* unilookup;
 
 u32 dump = 0;
 
-// !!!! DYNLIST MIHAMARABB !!!!
+// ACPI rewrite
 
 // TODO: kfree megjavítása
 
-// TODO: AVX memset
 // TODO: Serial -> arch/x86
 // TODO: PS/2: Van-e eszköz az első porton egyáltalán?
 
@@ -94,11 +94,13 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	vfs_init();
 
 	devmgr_init();
+
+	// AHCI
 	dev_cb_filter filter;
 	filter.type = DEV_TRIG_PCI_VENDOR_PRODUCT;
 	filter.vp.vendor = 0x8086; // AHCI kontroller
 	filter.vp.product = 0x2922;
-	dev_set_callback(DEV_SIG_CONNECT, filter, oncon, 0);
+	dev_set_callback(DEV_SIG_CONNECT, filter, ahci_init, 0);
 
 	pit_init();
 
@@ -120,46 +122,15 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 
 	asm volatile ("sti");
 
-	for (u32 i = 0; i < num_drives; i++) {
-		printk("drive type %s\n", dev_types[drives[i].hdr.type]);
-	}
-
-	// for (u32 i = 0; i < dtree[0].h.num_children; i++) {
-	// 	dtree_dev* d = dtree_get_child_of_id(0, i);
-	// 	// printk("Dev type %s\n", dtree_types[d->h.type]);
-	// 	for (u32 j = 0; j < d->h.num_children; j++) {
-	// 		dtree_dev* d2 = dtree_get_child(d, j);
-	// 		if (d2->h.type == DEV_PCI_MISC) continue;
-	// 		// printk("  > Dev type %s: %04x\n", dtree_types[d2->h.type], ((dtree_pci_dev*)d2)->vendor);
-	// 		for (u32 k = 0; k < d2->h.num_children; k++) {
-	// 			dtree_drive* d3 = dtree_get_child(d2, k);
-	// 			// printk("    > Dev type %s\n", dtree_types[d3->h.type]);
-	// 			if (d3->h.type != DEV_ATA) continue;
-
-	// 			foreach(p, d3->tbl->num_parts) {
-	// 				if (d3->tbl->parts[p].type == PART_ESP) {
-	// 					vfs_mkdir("/fat");
-	// 					fat32_mount(&d3->tbl->parts[p], "/fat");
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	vfs_list_mnts();
-	dd* fatroot = vfs_readdir("/fat");
-	printk("fileok: ");
-	for (u32 i = 0; i < fatroot->num_entries; i++) {
-		printk("%s ", fatroot->entries[i].name);
-		char buf[256];
-		strcat(buf, "/fat");
-		strcat(buf, fatroot->entries[i].name);
-		dd* asd = vfs_readdir(buf);
-		for (u32 j = 0; j < asd->num_entries; j++) {
-			printk("%s ", asd->entries[j].name);
+	dev_drive* d = dynlist_get(&drives, 0, dev_drive*);
+	foreach(p, d->tbl->num_parts) {
+		if (d->tbl->parts[p].type == PART_ESP) {
+			vfs_mkdir("/fat");
+			fat32_mount(&d->tbl->parts[p], "/fat");
 		}
 	}
-	printk("\n");
+
+	vfs_list_mnts();
 
 	u32 old = con_fg;
 	con_fg = 0x0000ff00;

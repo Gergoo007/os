@@ -1,6 +1,7 @@
 #pragma once
 
 #include <util/types.h>
+#include <util/dynlist.h>
 
 enum subsystem {
 	// chipset
@@ -53,7 +54,10 @@ enum dev_type {
 typedef struct dev_hdr {
 	struct dev_hdr* parent;
 	struct dev_hdr** children; // pointer to pointer array
-	void* handle;
+	union {
+		void* handle;
+		struct dev_misc_pci_data* pci_data;
+	};
 	u16 num_children;
 	enum dev_type type;
 	union {
@@ -107,8 +111,7 @@ typedef struct computer_x86 {
 extern computer_x86* computer;
 extern const char* dev_types[];
 
-extern dev_drive* drives;
-extern u32 num_drives;
+extern dynlist drives;
 
 enum signal {
 	DEV_SIG_CONNECT = 0,
@@ -149,4 +152,4 @@ typedef struct dev_cb_filter {
 
 void devmgr_init();
 void dev_add(void* vparent, void* vchild);
-void dev_set_callback(enum signal s, dev_cb_filter filter, void (*onconnect)(void), void (*ondisconnect)(void));
+void dev_set_callback(enum signal s, dev_cb_filter filter, void (*onconnect)(dev_misc*), void (*ondisconnect)(dev_misc*));

@@ -22,18 +22,18 @@ void drive_init(dev_drive* d) {
 	gpt_hdr* h = vmm_alloc();
 	drive_read(d, 1, sizeof(gpt_hdr), h);
 
-	part_table* tbl = kmalloc(sizeof(part_table));
+	u32 num_parts = 0;
+	FOREACH_PART(h, i) num_parts++;
+	part_table* tbl = kmalloc(sizeof(part_table) + sizeof(tbl->parts[0]) * num_parts);
 	tbl->num_parts = 0;
 	FOREACH_PART(h, i) {
 		if (!*(u64*)h->entries[i].part_type) continue;
 
 		u32 type = guid_to_enum(h->entries[i].part_type);
-		tbl->parts[tbl->num_parts] = (typeof(tbl->parts[tbl->num_parts])) {
-			.type = type,
-			.startlba = h->entries[i].start_lba,
-			.endlba = h->entries[i].end_lba,
-			.drive = d,
-		};
+		tbl->parts[tbl->num_parts].type = type;
+		tbl->parts[tbl->num_parts].startlba = h->entries[i].start_lba;
+		tbl->parts[tbl->num_parts].endlba = h->entries[i].end_lba;
+		tbl->parts[tbl->num_parts].drive = d;
 		memcpy(tbl->parts[tbl->num_parts].name, h->entries[i].name, 72);
 
 		tbl->num_parts++;
@@ -45,25 +45,20 @@ void drive_init(dev_drive* d) {
 
 void drive_read(dev_drive* d, u64 start, u64 bytes, void* into) {
 	switch (d->hdr.type) {
-		// case DEV_ATA: {
-		// 	// if (d->identity->ExtendedNumberOfUserAddressableSectors) {
-		// 	// 	if (bytes > d->identity->ExtendedNumberOfUserAddressableSectors*512)
-		// 	// 		bytes = d->identity->ExtendedNumberOfUserAddressableSectors*512;
-		// 	// } else if (d->identity->UserAddressableSectors) {
-		// 	// 	if (bytes > d->identity->UserAddressableSectors*512)
-		// 	// 		bytes = d->identity->UserAddressableSectors*512;
-		// 	// }
-		// 	// if (bytes < 512) {
-		// 	// 	// Bounce buffer
-		// 	// 	void* tmp = kmalloc(512);
-		// 	// 	ahci_read((dtree_pci_dev*)parent, d->port, start, 512, tmp);
-		// 	// 	memcpy(into, tmp, bytes);
-		// 	// 	kfree(tmp);
-		// 	// } else {
-		// 	// 	ahci_read((dtree_pci_dev*)parent, d->port, start, bytes, into);
-		// 	// }
-		// 	// break;
-		// }
+		case DEV_ATA: {
+			if (bytes > d->sectors*512)
+				bytes = d->sectors*512;
+			if (bytes < 512) {
+				// Bounce buffer
+				void* tmp = kmalloc(512);
+				ahci_read((dev_misc*)d->hdr.parent, d->hdr.slot, start, 512, tmp);
+				memcpy(into, tmp, bytes);
+				kfree(tmp);
+			} else {
+				ahci_read((dev_misc*)d->hdr.parent, d->hdr.slot, start, bytes, into);
+			}
+			break;
+		}
 		default: {
 			error("Nem támogatott meghajtó típus: %s\n", dev_types);
 		}

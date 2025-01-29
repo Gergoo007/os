@@ -636,5 +636,5 @@ typedef struct _attr_packed {
 } ata_identity;
 
 ata_identity* ahci_identify(hba_port* port);
-// void ahci_init(dtree_pci_dev* hc);
-// void ahci_read(dtree_pci_dev* dev, u32 pnum, u64 start, u64 count, void* buf);
+void ahci_init(dev_misc* hc);
+void ahci_read(dev_misc* dev, u32 pnum, u64 start, u64 count, void* buf);

@@ -10,7 +10,7 @@ typedef struct dynlist {
 } dynlist;
 
 dynlist dynlist_new(u32 inital_size, u32 item_size);
-#define dynlist_get(l, index, type) ((type)((l)->list + (index) * (l)->item_size))
+#define dynlist_get(l, index, type) (*(type*)((type)((l)->list + (index) * (l)->item_size)))
 void dynlist_append(dynlist* list, void* item);
 void* dynlist_pop(dynlist* list);
 #define dynlist_foreach(l, type, var) \

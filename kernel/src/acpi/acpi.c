@@ -127,6 +127,10 @@ static void process_fadt() {
 	if (f->x_pm_timer.address || f->pm_timer) {
 		// pm_timer_present = 1;
 	}
+
+	if (f->pc_feats.ps2ctrl) {
+		computer->ps2 = 1;
+	}
 }
 
 void acpi_process_tables(void* list, u32 entries, bool quadptrs) {

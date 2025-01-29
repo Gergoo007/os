@@ -12,7 +12,7 @@ enum {
 #define PCI_CFG_ADDR 0xcf8
 #define PCI_CFG_DATA 0xcfc
 
-volatile typedef union _attr_packed pci_hdr {
+typedef union _attr_packed pci_hdr {
 	struct _attr_packed {
 		u16 vendor;
 		u16 product;
