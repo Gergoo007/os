@@ -67,7 +67,7 @@ typedef volatile struct _attr_packed xhci_caps {
 
 typedef volatile struct _attr_packed xhci_regs {
 	union _attr_packed {
-		u32 usbcmd;
+		u32 raw;
 		volatile struct _attr_packed {
 			u32 rs : 1;
 			u32 hcreset : 1;
@@ -84,9 +84,9 @@ typedef volatile struct _attr_packed xhci_regs {
 			u32 tsc_en : 1; // Extended TBC TRB Status Enable
 			u32 vtioe : 1; // VTIO Enable
 		};
-	};
+	} usbcmd;
 	union _attr_packed {
-		u32 usbsts;
+		u32 raw;
 		volatile struct _attr_packed {
 			u32 hchalted : 1;
 			u32 : 1;
@@ -100,7 +100,7 @@ typedef volatile struct _attr_packed xhci_regs {
 			u32 hce : 1; // HC Error
 			u32 : 22;
 		};
-	};
+	} usbsts;
 	u32 pagesize; // Ha bit 'n' 1: 2^(n+12)-ena pagesize; pl. ha ez 0x1, akkor 4k
 	u8 r0[8];
 	u32 dnctrl; // Device Notification Control
@@ -117,7 +117,15 @@ typedef volatile struct _attr_packed xhci_regs {
 	};
 	u8 r1[16];
 	u64 dcbaap; // Device Context Base Address Array Pointer
-	u32 config;
+	volatile struct _attr_packed {
+		u32 raw;
+		volatile struct _attr_packed {
+			u32 max_dev_slots_enabled : 8;
+			u32 u3_entry_disable : 1;
+			u32 cie : 1;
+			u32 : 22;
+		};
+	} config;
 	u8 r2[964];
 	volatile struct _attr_packed {
 		union _attr_packed {
@@ -145,5 +153,100 @@ typedef volatile struct _attr_packed xhci_rt_regs {
 	u32 mfindex;
 	// TODO
 } xhci_rt_regs;
+
+typedef struct _attr_packed xhci_trb {
+	union _attr_packed {
+		struct _attr_packed {
+			u64 databuf;
+			struct _attr_packed {
+				u32 transferlen : 17;
+				u32 td_size : 5;
+				u32 interrupter_target : 10;
+			};
+			struct _attr_packed {
+				u32 cycle : 1;
+				u32 eval_next_trb : 1;
+				u32 int_on_short_packet : 1;
+				u32 no_snoop : 1;
+				u32 chain : 1;
+				u32 ioc : 1;
+				u32 immediate_data : 1;
+				u32 : 2;
+				u32 block_event_int : 1;
+				u32 type : 6;
+				u32 : 16;
+			};
+		} normal;
+		struct _attr_packed {
+			u8 bmRequestType;
+			u8 bRequest;
+			u16 wValue;
+			u16 wIndex;
+			u16 wLength;
+			struct _attr_packed {
+				u32 transferlen : 17;
+				u32 td_size : 5;
+				u32 interrupter_target : 10;
+			};
+			struct _attr_packed {
+				u32 cycle : 1;
+				u32 : 4;
+				u32 ioc : 1;
+				u32 immediate_data : 1;
+				u32 : 3;
+				u32 type : 6;
+				enum {
+					NO_DATA_STAGE = (u32)0,
+					DATA_OUT = (u32)2,
+					DATA_IN = (u32)3,
+				} transfer_type : 2;
+				u32 : 14;
+			};
+		} setup;
+		struct _attr_packed {
+			u64 data;
+			struct _attr_packed {
+				u32 transferlen : 17;
+				u32 td_size : 5;
+				u32 interrupter_target : 10;
+			};
+			struct _attr_packed {
+				u32 cycle : 1;
+				u32 eval_next_trb : 1;
+				u32 int_on_short_packet : 1;
+				u32 no_snoop : 1;
+				u32 chain : 1;
+				u32 ioc : 1;
+				u32 immediate_data : 1;
+				u32 : 3;
+				u32 type : 6;
+				u32 direction_in : 1;
+				u32 : 15;
+			};
+		} data;
+		struct _attr_packed {
+			u64 : 64;
+			struct _attr_packed {
+				u32 : 22;
+				u32 interrupter_target : 10;
+			};
+			struct _attr_packed {
+				u32 cycle : 1;
+				u32 eval_next_trb : 1;
+				u32 : 2;
+				u32 chain : 1;
+				u32 ioc : 1;
+				u32 : 4;
+				u32 type : 6;
+				u32 direction_in : 1;
+				u32 : 15;
+			};
+		} status;
+	};
+} xhci_trb;
+
+typedef struct _attr_packed xhci_dev_context {
+	
+} xhci_dev_context;
 
 void xhci_init(dev_misc* d);

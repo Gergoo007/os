@@ -2,6 +2,15 @@
 
 #include <util/types.h>
 
+// Advice: disable on real PC, it might hang
+#define DBG_SERIAL
+
+// If enabled the stacktrace code itself might produce
+// exceptions making the error unreadable
+#define STACKTRACE
+// STACK_TRACE_MINIMAL only prints addresses
+// #define STACKTRACE_MINIMAL
+
 // errno értékek
 enum {
 	EPERM	= 1,	/* Operation not permitted */
@@ -147,8 +156,5 @@ enum {
 };
 
 extern u32 errno;
-
-// Advice: disable on real PC, it might hang
-#define DBG_SERIAL
 
 extern char* logmod[1];

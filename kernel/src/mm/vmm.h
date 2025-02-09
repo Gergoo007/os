@@ -19,5 +19,6 @@ void* vmm_alloc();
 void* krealloc(void* p, u64 new);
 void vmm_free(void* a);
 __attribute__((__malloc__)) void* kmalloc(u64 bytes);
+void* kmalloc_align(u64 bytes, u64 align);
 void kpremap(void* p);
 void kfree(void* p);

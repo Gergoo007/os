@@ -24,7 +24,7 @@ void drive_init(dev_drive* d) {
 
 	u32 num_parts = 0;
 	FOREACH_PART(h, i) num_parts++;
-	part_table* tbl = kmalloc(sizeof(part_table) + sizeof(tbl->parts[0]) * num_parts);
+	part_table* tbl = kmalloc(sizeof(part_table) + sizeof(partition) * num_parts);
 	tbl->num_parts = 0;
 	FOREACH_PART(h, i) {
 		if (!*(u64*)h->entries[i].part_type) continue;

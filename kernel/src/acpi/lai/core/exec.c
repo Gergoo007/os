@@ -1505,8 +1505,11 @@ static lai_api_error_t lai_exec_process(lai_state_t *state) {
 
             lai_exec_pop_opstack_back(state);
 
-            if (lai_create_pkg(&frame[0].object, size.integer) != LAI_ERROR_NONE)
-                lai_panic("could not allocate memory for package");
+			if (!size.integer)
+				size.integer = 4;
+			if (lai_create_pkg(&frame[0].object, size.integer) != LAI_ERROR_NONE) {
+				lai_panic("could not allocate memory for package");
+			}
 
             item->pkg_phase++;
 

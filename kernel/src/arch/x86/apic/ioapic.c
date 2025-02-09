@@ -1,8 +1,12 @@
 #include <arch/x86/apic/ioapic.h>
 
-u32 ioapic_irqs[] = {
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-	10, 11, 12, 13, 14, 15
+irq_redirect ioapic_irqs[] = {
+	{ 0, 0, 0 }, { 1, 0, 0 }, { 2, 0, 0 },
+	{ 3, 0, 0 }, { 4, 0, 0 }, { 5, 0, 0 },
+	{ 6, 0, 0 }, { 7, 0, 0 }, { 8, 0, 0 },
+	{ 9, 1, 1 /* ACPI SCI */ }, { 10, 0, 0}, { 11, 0, 0},
+	{ 12, 0, 0 }, { 13, 0, 0}, { 14, 0, 0},
+	{ 15, 0, 0},
 };
 
 static dev_ioapic* find_ioapic(u32 gsi) {
@@ -24,10 +28,18 @@ u32 ioapic_read(dev_ioapic* a, u32 reg) {
 	return *(volatile u32*)(a->hdr.handle + 0x10);
 }
 
-void ioapic_write_entry(u32 gsi, ioapic_entry entry) {
-	dev_ioapic* a = find_ioapic(gsi);
-	ioapic_write(a, 0x10 + gsi * 2, entry.lower);
-	ioapic_write(a, 0x11 + gsi * 2, entry.higher);
+// void ioapic_write_entry(u32 gsi, ioapic_entry entry) {
+// 	dev_ioapic* a = find_ioapic(gsi);
+// 	ioapic_write(a, 0x10 + gsi * 2, entry.lower);
+// 	ioapic_write(a, 0x11 + gsi * 2, entry.higher);
+// }
+
+void ioapic_write_entry(irq_redirect gsi, ioapic_entry entry) {
+	dev_ioapic* a = find_ioapic(gsi.gsi);
+	entry.active_low = gsi.active_low;
+	entry.lvl_trig = gsi.lvl_trig;
+	ioapic_write(a, 0x10 + gsi.gsi * 2, entry.lower);
+	ioapic_write(a, 0x11 + gsi.gsi * 2, entry.higher);
 }
 
 ioapic_entry ioapic_get_entry(u32 gsi) {

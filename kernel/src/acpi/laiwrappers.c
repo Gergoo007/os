@@ -12,12 +12,16 @@ void laihost_free(void* a, size_t s) {
 }
 
 void* laihost_malloc(size_t s) {
+	// if (!s) s = 0x1;
 	return kmalloc(s);
 }
 
 void* laihost_realloc(void* old, size_t newsize, size_t oldsize) {
-	if (!oldsize) return kmalloc(newsize);
-	return krealloc(old, newsize);;
+	// if (!newsize) newsize = 0x1;
+	if (!oldsize) {
+		return kmalloc(newsize);
+	}
+	return krealloc(old, newsize);
 }
 
 _attr_noret void laihost_panic(const char* fmt) {
@@ -69,7 +73,7 @@ u32 laihost_ind(u16 port) {
 }
 
 void laihost_sleep(u64 ms) {
-	tsc_sleep(ms * 1000000);
+	// tsc_sleep(ms * 1000000);
 }
 
 // laihost_pci*: pcie/pcie.c

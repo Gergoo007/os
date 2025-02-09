@@ -9,10 +9,12 @@
 struct elf64_sym* ksymtab;
 void* kstrtab;
 void* kshstrtab;
+void* kdebug_line;
 
 u32 ksymtab_size;
 u32 kstrtab_size;
 u32 kshstrtab_size;
+u32 kdebug_line_size;
 
 void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
 	u32* p = (void*)addr + *(u32*)addr;
@@ -22,6 +24,8 @@ void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
 	kstrtab_size = VIRTUAL(*(p++));
 	kshstrtab = VIRTUAL((void*)(u64)*(p++));
 	kshstrtab_size = VIRTUAL(*(p++));
+	kdebug_line = VIRTUAL((void*)(u64)*(p++));
+	kdebug_line_size = VIRTUAL(*(p++));
 	addr++;
 
 	while (addr->type) {
@@ -38,6 +42,7 @@ void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
 				mb_fb* fb = (void*)addr;
 				// Framebuffer előkészítése
 				fb_main.base = FB_VADDR;
+				fb_main.backbuf = (void*)FB_VADDR; // még nincs vmm
 				fb_main.size = fb->width * fb->height * (fb->bpp/8);
 				fb_main.width = fb->width;
 				fb_main.height = fb->height;

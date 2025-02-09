@@ -132,7 +132,15 @@ typedef struct _attr_packed madt {
 				u8 bus_src;
 				u8 irq_src;
 				u32 gsi;
-				u16 flags;
+				union {
+					u16 flags;
+					struct _attr_packed {
+						u16 : 1;
+						u16 active_low : 1;
+						u16 : 1;
+						u16 lvl_trig : 1;
+					};
+				};
 			} e_ioapic_overr;
 
 			struct _attr_packed {

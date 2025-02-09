@@ -46,7 +46,7 @@ void devmgr_onchange(dev_misc* dev, enum signal sig) {
 	void* callback_offset = (void*)((u64)offsetof(callback_pair, onconnect) + sig * sizeof(void (*)(void)));
 
 	// dynlist_foreach(&callbacks, callback_pair*, i) {
-	for (callback_pair *i = (&callbacks)->list; (u64)i < (u64)(&callbacks)->list + (&callbacks)->current_count * (&callbacks)->item_size; i += (&callbacks)->item_size) {
+	for (callback_pair* i = callbacks.list; (u64)i < (u64)callbacks.list + callbacks.current_count * callbacks.item_size; i = (void*)i + callbacks.item_size) {
 		dev_cb_filter* f = &i->filter;
 		u8 filter_subsys = f->type & 0b11110000;
 

@@ -1,5 +1,7 @@
-_QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m 4G -M q35 $(QEMU_FLAGS) \
-		-smp 1 -drive id=disk,file=disk.img,if=none \
+RAMSIZE ?= 4G
+
+_QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m $(RAMSIZE) -M q35 $(QEMU_FLAGS) \
+		-smp 2 -drive id=disk,file=disk.img,if=none \
 		-device ich9-usb-uhci6,id=uhci -device qemu-xhci,id=xhci \
 		-device ahci,id=ahci \
 		-device ide-hd,drive=disk,bus=ahci.0 \

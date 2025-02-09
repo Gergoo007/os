@@ -1,8 +1,7 @@
 .global memset
 .global memcpy
 .global memcmp
-.global memset_aligned
-.global memcpy_aligned
+.global memcpy_avx_aligned
 
 # %rdi: cím
 # %sl: érték
@@ -69,26 +68,22 @@ memcmp:
 	movl $1, %eax
 	ret
 
-#
-##
-##### TODO: AVX, SSE
-##
-#
+# 32 byte-onként mozgat, hasznos write combine memcpy-ra
+# %rdi: ide
+# %rsi: innen
+# %rdx: ennyit
+# return: maradék byte-ok
+memcpy_avx_aligned:
+	mov %rdx, %rax
+	and $31, %rax
+	shl $5, %rdx
 
-# %rdi: 64 byte-os határra illeszkedő cím
-# %sl: érték
-# %rdx: ennyit (8 byte többszörös)
-memset_aligned:
-	mov %rdx, %rcx
-	mov %rsi, %rax
-	rep stosq
-	ret
+.avxloop:
+	cmp $0, %rdx
+	je .avxexit
+	movaps (%rsi), %xmm0
+	movaps %xmm0, (%rdi)
+	dec %rdx
 
-# %rdi: 64 byte-os határra illeszkedő innen
-# %rsi: 64 byte-os határra illeszkedő amoda
-# %rdx: ennyit (8 byte többszörös)
-memcpy_aligned:
-	xchg %rdi, %rsi
-	mov %rdx, %rcx
-	rep movsq
+.avxexit:
 	ret

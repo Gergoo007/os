@@ -63,5 +63,8 @@ typedef struct lapic_regs {
 	al u32 r8[4];
 } lapic_regs;
 
+#undef al
+
 void apic_process_madt(madt* m);
 void lapic_eoi();
+void lapic_init_smp();

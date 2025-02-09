@@ -15,3 +15,4 @@ void dynlist_append(dynlist* list, void* item);
 void* dynlist_pop(dynlist* list);
 #define dynlist_foreach(l, type, var) \
 	for (type var = (l)->list; (u64)var < (u64)(l)->list + (l)->current_count * (l)->item_size; var += (l)->item_size)
+void dynlist_free(dynlist* list);

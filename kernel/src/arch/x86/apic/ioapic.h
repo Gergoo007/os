@@ -44,9 +44,14 @@ typedef struct _attr_packed dev_ioapic {
 	u32 id;
 } dev_ioapic;
 
-extern u32 ioapic_irqs[];
+typedef struct irq_redirect {
+	u32 gsi : 30;
+	u32 active_low : 1;
+	u32 lvl_trig : 1;
+} irq_redirect;
+extern irq_redirect ioapic_irqs[];
 
-void ioapic_write_entry(u32 gsi, ioapic_entry entry);
+void ioapic_write_entry(irq_redirect gsi, ioapic_entry entry);
 ioapic_entry ioapic_get_entry(u32 gsi);
 void ioapic_set_mask(u32 gsi, bool mask);
 void ioapic_set_vector(u32 gsi, u8 v);

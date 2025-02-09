@@ -1,14 +1,16 @@
 #include <arch/x86/apic/apic.h>
+#include <arch/x86/cpuid.h>
 #include <arch/arch.h>
 #include <gfx/console.h>
 #include <serial/serial.h>
 #include <acpi/lai/helpers/sci.h>
 #include <mm/paging.h>
 #include <mm/vmm.h>
+#include <mm/pmm.h>
 
-volatile lapic_regs* base;
+volatile lapic_regs* lapic;
 
-volatile lapic_regs* lapic_get_base() {
+volatile lapic_regs* lapic_get_lapic() {
 	u32 lo, hi;
 	asm volatile ("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0x1b));
 	volatile lapic_regs* l = (volatile lapic_regs*)(((u64)lo | ((u64)hi << 32)) & ~0x0fffULL);
@@ -17,14 +19,14 @@ volatile lapic_regs* lapic_get_base() {
 }
 
 void lapic_init() {
-	base = lapic_get_base();
+	lapic = lapic_get_lapic();
 	// LAPIC beállítása
-	printk("APIC verzió %02x\n", base->version);
-	base->spur_int = 0xff | (1 << 8);
+	printk("APIC verzió %02x\n", lapic->version);
+	lapic->spur_int = 0xff | (1 << 8);
 }
 
 void lapic_eoi() {
-	base->eoi = (u32)0;
+	lapic->eoi = (u32)0;
 }
 
 void apic_process_madt(madt* m) {
@@ -43,7 +45,9 @@ void apic_process_madt(madt* m) {
 			}
 
 			case MADT_IOAPIC_OVERRIDE: {
-				ioapic_irqs[entry->e_ioapic_overr.irq_src] = entry->e_ioapic_overr.gsi;
+				ioapic_irqs[entry->e_ioapic_overr.irq_src].gsi = entry->e_ioapic_overr.gsi;
+				ioapic_irqs[entry->e_ioapic_overr.irq_src].active_low = entry->e_ioapic_overr.active_low;
+				ioapic_irqs[entry->e_ioapic_overr.irq_src].lvl_trig = entry->e_ioapic_overr.lvl_trig;
 				break;
 			}
 
@@ -73,4 +77,74 @@ void apic_process_madt(madt* m) {
 	ioapic_write_entry(ioapic_irqs[0], e);
 
 	int_en();
+}
+
+// *((volatile uint32_t*)((void*)lapic) + 0x280) = 0;
+// *((volatile uint32_t*)((void*)lapic) + 0x310) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (i << 24);
+// *((volatile uint32_t*)((void*)lapic) + 0x300) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff00000) | 0x00C500;
+
+extern void ap_starter();
+
+extern u32 apcr3;
+
+void lapic_init_smp() {
+	u64 asd;
+	asm volatile ("mov %%cr3, %0" : "=a"(asd));
+	printk("cr3 %p\n", asd);
+	apcr3 = asd;
+
+	// SMP beállítása
+	printk("lapic init on bsp; num cores %d\n", computer->num_cpus);
+
+	u32 bsp = cpu_core();
+
+	map_page(0x0, 0x0, MAP_FLAGS_2M | 0b11);
+	memcpy((void*)0x8000, ap_starter, 0x2000);
+
+	for (u32 i = 0; i < computer->num_cpus; i++) {
+		if (computer->cpus[i].apic_id == bsp) continue;
+		u32 apic_id = computer->cpus[i].apic_id;
+
+		if (heap_base_phys < 0xa000) warn("Az SMP bootstrap kód veszélyes helyen van!");
+
+		// lapic->err_sts = 0;
+		// lapic->int_cmd1 = (lapic->int_cmd1 & 0x00ffffff) | (apic_id << 24);	// APIC ID küldése
+		// lapic->int_cmd0 = (lapic->int_cmd0 & 0xfff00000) | 0xc500;			// INIT IPI
+		// do { membar(); } while (*((volatile u32*)((void*)lapic + 0x300)) & (1 << 12));	// Status?
+		// lapic->int_cmd1 = (lapic->int_cmd1 & 0x00ffffff) | (apic_id << 24);	// APIC ID küldése
+		// lapic->int_cmd0 = (lapic->int_cmd0 & 0xfff00000) | 0x8500;			// deassert
+		// do { membar(); } while (*((volatile u32*)((void*)lapic + 0x300)) & (1 << 12));
+		// printk("asd\n");
+		// sleep(10);
+
+		// // STARTUP IPI
+		// for (u32 j = 0; j < 2; j++) {
+		// 	lapic->err_sts = 0;
+		// 	lapic->int_cmd1 = (lapic->int_cmd1 & 0x00ffffff) | (apic_id << 24);	// APIC ID küldése
+		// 	lapic->int_cmd0 = (lapic->int_cmd0 & 0xfff0f800) | 0x000608;
+		// 	sleep(1);
+		// 	do { membar(); } while (*((volatile u32*)((void*)lapic + 0x300)) & (1 << 12));
+		// }
+		*((volatile uint32_t*)((void*)lapic + 0x280)) = 0;                                                                             // clear APIC errors
+		*((volatile uint32_t*)((void*)lapic + 0x310)) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (apic_id << 24);         // select AP
+		*((volatile uint32_t*)((void*)lapic + 0x300)) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff00000) | 0x00C500;          // trigger INIT IPI
+		do { __asm__ __volatile__ ("pause" : : : "memory"); }while(*((volatile uint32_t*)((void*)lapic + 0x300)) & (1 << 12));         // wait for delivery
+		*((volatile uint32_t*)((void*)lapic + 0x310)) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (apic_id << 24);         // select AP
+		*((volatile uint32_t*)((void*)lapic + 0x300)) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff00000) | 0x008500;          // deassert
+		do { __asm__ __volatile__ ("pause" : : : "memory"); }while(*((volatile uint32_t*)((void*)lapic + 0x300)) & (1 << 12));         // wait for delivery
+		sleep(10);                                                                                                                 // wait 10 msec
+		// send STARTUP IPI (twice)
+		for(u32 j = 0; j < 2; j++) {
+			*((volatile uint32_t*)((void*)lapic + 0x280)) = 0;                                                                     // clear APIC errors
+			*((volatile uint32_t*)((void*)lapic + 0x310)) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (apic_id << 24); // select AP
+			*((volatile uint32_t*)((void*)lapic + 0x300)) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff0f800) | 0x000608;  // trigger STARTUP IPI for 0800:0000
+			// udelay(200);                                                                                                        // wait 200 usec
+			// for (u16 k = 1; k; k++) asm volatile ("nop");
+			do { __asm__ __volatile__ ("pause" : : : "memory"); }while(*((volatile uint32_t*)((void*)lapic + 0x300)) & (1 << 12)); // wait for delivery
+		}
+
+		printk("fut\n");
+	}
+
+	while (1);
 }

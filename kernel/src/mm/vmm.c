@@ -111,6 +111,75 @@ __attribute__((__malloc__)) void* kmalloc(u64 bytes) {
 	return 0;
 }
 
+void* kmalloc_align(u64 bytes, u64 align) {
+	if (!bytes) return 0;
+	if (align < 17) return kmalloc(bytes);
+
+	if (bytes < 16)
+		bytes = 16;
+	else
+		if (bytes & 15)
+			bytes = (bytes | 15) + 1;
+
+	vmm_mem_used += bytes;
+	vmm_mem_free -= bytes;
+
+	u64 a = KHEAP;
+	vmem* l = first_link;
+	while (l) {
+		if (l->sts == 0) { // free?
+			// Van szabad hely?
+			u64 start = align(a, align);
+			if (l->len > bytes + (start - a)) {
+				// Van hely a cuccosra
+				const u32 correction = start - a;
+				if (correction) {
+					// Nem tökéletes az alignment, be kell illeszteni egy új linket
+					vmem* alignm = new_link();
+					alignm->len = correction;
+					alignm->next = l;
+					alignm->prev = l->prev;
+					alignm->sts = 0;
+
+					if (l->prev) {
+						l->prev->next = alignm;
+						l->prev = alignm;
+					}
+
+					a += correction;
+				}
+
+				// Jelenlegi link beállítása
+				const u32 diff = l->len - bytes;
+				l->len = bytes;
+				l->sts = 1;
+
+				// Maradék hely
+				if (diff) {
+					vmem* free = new_link();
+					free->len = diff;
+					free->sts = 0;
+
+					if (l->next)
+						l->next->prev = free;
+					free->next = l->next;
+
+					free->prev = l;
+					l->next = free;
+				}
+			}
+
+			kpremap((void*)a);
+			return (void*)a;
+		}
+
+		a += l->len;
+		l = l->next;
+	}
+
+	return 0;
+}
+
 // TODO: -O3-al kompatibilis??
 void kpremap(void* p) {
 	u64 a = KHEAP;

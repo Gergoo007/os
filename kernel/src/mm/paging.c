@@ -23,7 +23,7 @@ void paging_init(void) {
 	} else {
 		for (u64 i = 4; i < remaining_gibs; i++) {
 			page_table* pd = pmm_alloc();
-			memset_aligned(pd, 0, 0x200);
+			memset(pd, 0, 0x200);
 			for (u64 j = 0; j < 512; j++) {
 				pd->entries[j].addr = (i*0x40000000 + j*0x200000) | 0b11;
 			}
@@ -85,7 +85,7 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 		pdp = (page_table*) ((pml4->entries[ADDR_PML4I(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
 	} else {
 		pdp = (page_table*)vmm_alloc();
-		memset_aligned(pdp, 0, 0x1000/8);
+		memset(pdp, 0, 0x1000/8);
 		pml4->entries[ADDR_PML4I(virt)].addr = (u64)pdp & ~0xffff800000000000ULL;
 		pml4->entries[ADDR_PML4I(virt)].flags = flags;
 	}
@@ -100,7 +100,7 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 			pd = (page_table*) ((pdp->entries[ADDR_PDPI(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
 		} else {
 			pd = (page_table*)vmm_alloc();
-			memset_aligned(pd, 0, 0x1000/8);
+			memset(pd, 0, 0x1000/8);
 			pdp->entries[ADDR_PDPI(virt)].addr = (u64)pd & ~0xffff800000000000ULL;
 			pdp->entries[ADDR_PDPI(virt)].flags = flags;
 		}
@@ -116,7 +116,7 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 			pt = (page_table*) ((pd->entries[ADDR_PDI(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
 		} else {
 			pt = (page_table*)vmm_alloc();
-			memset_aligned(pt, 0, 0x1000/8);
+			memset(pt, 0, 0x1000/8);
 			pd->entries[ADDR_PDI(virt)].addr = (u64)pt & ~0xffff800000000000ULL;
 			pd->entries[ADDR_PDI(virt)].flags = flags;
 		}

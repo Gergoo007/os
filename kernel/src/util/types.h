@@ -58,9 +58,13 @@ typedef __SIZE_TYPE__ size_t;
 
 #define assert(c) if (!(c)) error("Assert failed: %s (%s:%d)", #c, __FILE__, __LINE__)
 
+#define align(x, n) ((x) & (n)-1) ? (((x) | (n)-1)+1) : (x)
+
 extern struct elf64_sym* ksymtab;
 extern u32 ksymtab_size;
 extern void* kstrtab;
 extern u32 kstrtab_size;
 extern void* kshstrtab;
 extern u32 kshstrtab_size;
+extern void* kdebug_line;
+extern u32 kdebug_line_size;

@@ -8,7 +8,7 @@ kernel: clean
 
 link: out/boot.s.o out/kernel.o syms
 	@echo "  > $(LD) preloader"
-	@ld.gold $(LDFLAGS) out/boot.s.o out/kernel.o out/ksymtab.o out/kstrtab.o out/kshstrtab.o -o out/preloader
+	@ld.gold $(LDFLAGS) out/boot.s.o out/kernel.o out/ksymtab.o out/kstrtab.o out/kshstrtab.o out/kdebug_line.o -o out/preloader
 
 out/%.s.o: src/%.s
 	@echo "  > $(AS) $^"
@@ -23,10 +23,11 @@ out/kernel.o: ../kernel/out/kernel
 
 syms:
 	@echo "  > tools/extractor ../kernel/out/kernel"
-	@../tools/symextractor/extractor ../kernel/out/kernel out/ksymtab out/kstrtab out/kshstrtab
+	@../tools/symextractor/extractor ../kernel/out/kernel out/ksymtab out/kstrtab out/kshstrtab out/kdebug_line
 	@ld.gold -r -b binary out/ksymtab -o out/ksymtab.o
 	@ld.gold -r -b binary out/kstrtab -o out/kstrtab.o
 	@ld.gold -r -b binary out/kshstrtab -o out/kshstrtab.o
+	@ld.gold -r -b binary out/kdebug_line -o out/kdebug_line.o
 
 clean:
 	@rm -rf out

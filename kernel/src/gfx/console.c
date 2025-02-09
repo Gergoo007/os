@@ -63,7 +63,13 @@ void con_newline() {
 		const u32 line_height = font.glyph_height + 1;
 
 		// Minden egy sorral feljebb csúsztatása
-		memcpy((void*)FB_VADDR, (void*)FB_VADDR + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
+		// memcpy((void*)fb_main.backbuf, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
+		// fb_swap(&fb_main);
+		memcpy((void*)fb_main.base, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
+		memcpy((void*)fb_main.backbuf, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
+
+		// memcpy_avx_aligned((void*)fb_main.base, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
+		// memcpy_avx_aligned((void*)fb_main.backbuf, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
 	} else {
 		con_cy += font.glyph_height + 1;
 	}
@@ -74,10 +80,10 @@ void con_update_cursor() {
 	u8 _height = 4;
 
 	// Előző elrejtése
-	fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - _height, font.glyph_width, 3, con_bg);
+	fb_draw_rect_direct(&fb_main, con_cx, con_cy + font.glyph_height - _height, font.glyph_width, 3, con_bg);
 
 	// Új rajzolása
-	fb_draw_rect(&fb_main, con_cx + font.glyph_width + 1, con_cy + font.glyph_height - _height, font.glyph_width, 3, 0x00ffffff);
+	fb_draw_rect_direct(&fb_main, con_cx + font.glyph_width + 1, con_cy + font.glyph_height - _height, font.glyph_width, 3, 0x00ffffff);
 }
 
 void cputglyph(u16 glyphnum) {
@@ -91,9 +97,9 @@ void cputglyph(u16 glyphnum) {
 
 		for (u32 x = 0; x < font.glyph_width; x++) {
 			if (row & mask) {
-				fb_pixel(fb_main, con_cx + x, con_cy + y, con_fg);
+				fb_pixel_direct(fb_main, con_cx + x, con_cy + y, con_fg);
 			} else {
-				fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
+				fb_pixel_direct(fb_main, con_cx + x, con_cy + y, con_bg);
 			}
 			mask >>= 1;
 		}
@@ -111,20 +117,20 @@ void cputc(char c) {
 		case '\n': {
 			for (u8 y = 0; y < font.glyph_height; y++)
 				for (u8 x = 0; x < font.glyph_width; x++)
-					fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
+					fb_pixel_direct(fb_main, con_cx + x, con_cy + y, con_bg);
 
 			// con_cy += font.glyph_height + 1;
 			con_newline();
 			con_cx = 0;
 
-			fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, 0x00ffffff);
+			fb_draw_rect_direct(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, 0x00ffffff);
 
 			return;
 		}
 		case '\r': {
 			for (u8 y = 0; y < font.glyph_height; y++)
 				for (u8 x = 0; x < font.glyph_width; x++)
-					fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
+					fb_pixel_direct(fb_main, con_cx + x, con_cy + y, con_bg);
 			con_cx = 0;
 			return;
 		}
@@ -134,9 +140,9 @@ void cputc(char c) {
 			con_cx -= font.glyph_width + 1;
 			for (u8 y = 0; y < font.glyph_height; y++)
 				for (u8 x = 0; x < font.glyph_width*2+1; x++)
-					fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
+					fb_pixel_direct(fb_main, con_cx + x, con_cy + y, con_bg);
 
-			fb_draw_rect(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, con_fg);
+			fb_draw_rect_direct(&fb_main, con_cx, con_cy + font.glyph_height - 4, font.glyph_width, 3, con_fg);
 
 			return;
 		}
@@ -146,7 +152,7 @@ void cputc(char c) {
 		// Sortörés
 		for (u8 y = 0; y < font.glyph_height; y++) {
 			for (u8 x = 0; x < font.glyph_width; x++) {
-				fb_pixel(fb_main, con_cx + x, con_cy + y, con_bg);
+				fb_pixel_direct(fb_main, con_cx + x, con_cy + y, con_bg);
 			}
 		}
 

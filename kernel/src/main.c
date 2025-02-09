@@ -11,6 +11,9 @@
 #include <arch/x86/pic.h>
 #include <arch/x86/clocks/pit.h>
 #include <arch/x86/clocks/tsc.h>
+#include <arch/x86/apic/apic.h>
+#include <arch/arch.h>
+#include <acpi/lai/core.h>
 #include <devmgr/devmgr.h>
 #include <ps2/kbd.h>
 #include <acpi/acpi.h>
@@ -23,6 +26,8 @@
 #include <fs/vfs/ramfs.h>
 #include <modules/modules.h>
 #include <storage/ahci/ahci.h>
+#include <util/dwarf.h>
+#include <usb/hci/xhci.h>
 
 extern _attr_noret void khang();
 extern u16* unilookup;
@@ -37,21 +42,13 @@ u32 dump = 0;
 // TODO: PS/2: Van-e eszköz az első porton egyáltalán?
 
 // Saját ACPI driver??
+// -O3 support
 
 void oncon() {
 	printk("LE LETT HÍVVA!\n");
 }
 
 _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
-	// u8 src[128];
-	// u8 des[128];
-	// memcpy(des, src, 24);
-	// while (1);
-	// Rendes hardwaren ez befagyasztja a rendszert...
-	// serial_init(0x3f8);
-
-	// asm volatile ("outw %0, %1" :: "a"((u16)0x8A00), "d"((u16)0x8A00));
-
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
 
 	u64 cr4;
@@ -59,19 +56,12 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	cr4 |= (1 << 4);
 	asm volatile ("mov %0, %%cr4" :: "r"(cr4));
 
-	sprintk("teszt\n\r");
-
 	multiboot2_parse(boot_info, preloader_img_len);
 
 	// TODO: ha igazi hw-en nem jó, ezt nem szabad futtatni
 	pic_init();
 
 	con_init();
-
-	printk("Heap %p\n", heap_base_phys);
-
-	printk("Osszes memoria: %dM\n", pmm_mem_all >> 20);
-	printk("Szabad memoria: %dM\n", pmm_mem_free >> 20);
 
 	paging_init();
 	MAKE_VIRTUAL(boot_info);
@@ -91,20 +81,36 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	gdt_init();
 	idt_init();
 
+	fb_main.backbuf = kmalloc(fb_main.size);
+	memset(fb_main.backbuf, 0, fb_main.size);
+	printk("Heap %p\n", heap_base_phys);
+
+	printk("Osszes memoria: %dM\n", pmm_mem_all >> 20);
+	printk("Szabad memoria: %dM\n", pmm_mem_free >> 20);
+
 	vfs_init();
 
 	devmgr_init();
 
 	// AHCI
 	dev_cb_filter filter;
-	filter.type = DEV_TRIG_PCI_VENDOR_PRODUCT;
-	filter.vp.vendor = 0x8086; // AHCI kontroller
-	filter.vp.product = 0x2922;
+	filter.type = DEV_TRIG_PCI_CLASS_SUBCLASS_PROGIF;
+	filter.class.class = 0x1;
+	filter.class.subclass = 0x6;
+	filter.class.progif = 0x1;
 	dev_set_callback(DEV_SIG_CONNECT, filter, ahci_init, 0);
 
-	pit_init();
+	filter.class.class = 0xc;
+	filter.class.subclass = 0x3;
+	filter.class.progif = 0x30;
+	dev_set_callback(DEV_SIG_CONNECT, filter, xhci_init, 0);
 
 	acpi_init(boot_info);
+
+	pit_init();
+	computer->tmr = TMR_PIT;
+
+	lapic_init_smp();
 
 	// if (!timer)
 	// pit_init();
@@ -114,27 +120,35 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	// if (acpi_8042_present())
 		ps2_kbd_init();
 	// else
-		// printk("Nincs PS/2 :(\n");
+	// 	printk("Nincs PS/2 :(\n");
 
 	tss_init();
 
 	userspace_init();
 
-	asm volatile ("sti");
+	int_en();
 
-	dev_drive* d = dynlist_get(&drives, 0, dev_drive*);
-	foreach(p, d->tbl->num_parts) {
-		if (d->tbl->parts[p].type == PART_ESP) {
-			vfs_mkdir("/fat");
-			fat32_mount(&d->tbl->parts[p], "/fat");
+	foreach(i, drives.current_count) {
+		dev_drive* d = dynlist_get(&drives, i, dev_drive*);
+		foreach(p, d->tbl->num_parts) {
+			if (d->tbl->parts[p].type == PART_ESP) {
+				vfs_mkdir("/fat");
+				fat32_mount(&d->tbl->parts[p], "/fat");
+			}
 		}
 	}
 
 	vfs_list_mnts();
 
+	// dd* root = vfs_readdir("/fat/");
+	// printk("fileok ");
+	// foreach(i, root->num_entries) {
+	// 	printk("%s ", root->entries[i].name);
+	// }
+
 	u32 old = con_fg;
 	con_fg = 0x0000ff00;
-	printk("Kernel idle...");
+	printk("Kernel idle...\n");
 	con_fg = old;
 
 	khang();

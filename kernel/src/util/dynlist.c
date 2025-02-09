@@ -22,3 +22,8 @@ void dynlist_append(dynlist* list, void* item) {
 void* dynlist_pop(dynlist* list) {
 	return list->list + --list->current_count * list->item_size;
 }
+
+void dynlist_free(dynlist* list) {
+	kfree(list->list);
+	list->list = 0;
+}

@@ -52,7 +52,8 @@ lai_api_error_t lai_create_buffer(lai_variable_t *object, size_t size) {
 
 lai_api_error_t lai_create_pkg(lai_variable_t *object, size_t n) {
     object->type = LAI_PACKAGE;
-    object->pkg_ptr = laihost_malloc(sizeof(struct lai_pkg_head));
+	object->pkg_ptr = laihost_malloc(sizeof(struct lai_pkg_head));
+
     if (!object->pkg_ptr)
         return LAI_ERROR_OUT_OF_MEMORY;
     object->pkg_ptr->rc = 1;
@@ -63,6 +64,7 @@ lai_api_error_t lai_create_pkg(lai_variable_t *object, size_t n) {
         return LAI_ERROR_OUT_OF_MEMORY;
     }
     memset(object->pkg_ptr->elems, 0, n * sizeof(lai_variable_t));
+
     return LAI_ERROR_NONE;
 }
 

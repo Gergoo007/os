@@ -168,7 +168,7 @@ void acpi_process_tables(void* list, u32 entries, bool quadptrs) {
 			}
 
 			case ACPI_ECDT: {
-				report("embedded ctrl..\n");
+				printk("embedded ctrl..\n");
 				break;
 			}
 
@@ -238,11 +238,13 @@ void acpi_init(void* boot_info) {
 	lai_enable_acpi(1);
 
 	// bit 8 & 9
-	lai_set_sci_event(0x300);
+	lai_set_sci_event(0x0300);
 
 	ioapic_entry e = { .raw = 0, };
 	e.vector = 0x43;
-	ioapic_write_entry(f->sci_int, e);
+	e.lvl_trig = ioapic_irqs[9].lvl_trig;
+	e.active_low = ioapic_irqs[9].active_low;
+	ioapic_write_entry(ioapic_irqs[f->sci_int], e);
 	lai_get_sci_event();
 }
 

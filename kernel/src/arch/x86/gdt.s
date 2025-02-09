@@ -1,6 +1,16 @@
 .global gdt_load
 
+.global gdtr
+
+.bss
+gdtr:
+	.quad 0
+apidtr:
+	.quad 0
+
+.text
 gdt_load:
+	mov %rdi, gdtr
 	lgdt (%rdi)
 
 	# Far jump az új kód szegmensbe

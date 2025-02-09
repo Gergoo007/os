@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <elf.h>
+#include <string.h>
 
 int main(int argc, char** argv) {
-	if (argc != 5) {
-		printf("Usage: %s <input> <symtab> <strtab> <shstrtab>\n", argv[0]);
+	if (argc != 6) {
+		printf("Usage: %s <input> <symtab> <strtab> <shstrtab> <debug_line>\n", argv[0]);
 		return 1;
 	}
 
@@ -12,6 +13,7 @@ int main(int argc, char** argv) {
 	FILE* symtab = fopen(argv[2], "w");
 	FILE* strtab = fopen(argv[3], "w");
 	FILE* shstrtab = fopen(argv[4], "w");
+	FILE* debug_line = fopen(argv[5], "w");
 
 	fseek(in, 0, SEEK_END);
 	unsigned long long s = ftell(in);
@@ -34,8 +36,15 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	for (int i = 0; i < e->e_shnum; i++) {
+		if (!strcmp(k + sh[i].sh_offset + sh[i].sh_name, ".debug_line")) {
+			fwrite(k + sh[i].sh_offset, sh[i].sh_size, 1, debug_line);
+		}
+	}
+
 	fclose(in);
 	fclose(symtab);
 	fclose(strtab);
 	fclose(shstrtab);
+	fclose(debug_line);
 }

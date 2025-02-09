@@ -84,23 +84,23 @@ fcw:
 .equ CACHE_WT, 2
 .equ CACHE_UC, 0
 
-.equ MAP_DEF, 0b11011 # Present, RW, WB
-.equ MAP_FB,  0b01011 # Present, RW, WC
+// .equ MAP_DEF, 0b11011 # Present, RW, WB
+// .equ MAP_FB,  0b01011 # Present, RW, WC
 
 // Uncached gyorsabb mint a write-back..?
 #.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
- .equ MAP_DEF_2M, 0b10000011 # Present, RW, UC, 2MiB
+// .equ MAP_DEF_2M, 0b10000011 # Present, RW, UC, 2MiB
 #.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
- .equ MAP_FB_2M,  0b10001011 # Present, RW, WC, 2MiB
+// .equ MAP_FB_2M,  0b10001011 # Present, RW, WC, 2MiB
 
-// .equ MAP_DEF, 0b00111 # Present, RW, WB
+.equ MAP_DEF, 0b00011 # Present, RW, WB
 // .equ MAP_FB,  0b00111 # Present, RW, WC
 
 // // Uncached gyorsabb mint a write-back..?
 // #.equ MAP_DEF_2M, 0b10011011 # Present, RW, WB, 2MiB
-//  .equ MAP_DEF_2M, 0b10000111 # Present, RW, UC, 2MiB
+ .equ MAP_DEF_2M, 0b10000011 # Present, RW, UC, 2MiB
 // #.equ MAP_DEF_2M, 0b10010011 # Present, RW, WT, 2MiB
-//  .equ MAP_FB_2M,  0b10000111 # Present, RW, WC, 2MiB
+ .equ MAP_FB_2M,  0b10010011 # Present, RW, WC, 2MiB
 
 .section .text
 pmain:
@@ -141,6 +141,8 @@ pmain:
 	movl $_binary_out_kstrtab_size, 12(%edi)
 	movl $_binary_out_kshstrtab_start, 16(%edi)
 	movl $_binary_out_kshstrtab_size, 20(%edi)
+	movl $_binary_out_kdebug_line_start, 24(%edi)
+	movl $_binary_out_kdebug_line_size, 28(%edi)
 
 	mov (%esp), %edi
 
@@ -349,7 +351,7 @@ vissza:
 # 4K paging kell ide, page table mehet akár ebbe a régióba
 tovabb:
 	// mov (%edi), %eax
-	mov $0, %eax
+	mov $0x1000000, %eax
 	mov 4(%edi), %ecx
 	or $MAP_DEF_2M, %eax
 	mov $pd_k, %ebx
