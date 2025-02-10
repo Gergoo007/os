@@ -4,11 +4,6 @@
 
 idt_entry* idt;
 
-extern idtr apidtr = (idtr) {
-	// .address = idt,
-	.size = 256*16 - 1,
-};
-
 void idt_add_entry(u8 v, u64 isr, u8 type) {
 	idt[v].dpl = 0;
 	idt[v].gate_type = type;
@@ -22,7 +17,7 @@ void idt_add_entry(u8 v, u64 isr, u8 type) {
 
 void idt_init() {
 	idt = vmm_alloc();
-	memset(idt, 0, 0x1000/8);
+	memset(idt, 0, 0x1000);
 
 	idt_add_entry(0x00, (u64)exc0,  0b1111);
 	idt_add_entry(0x01, (u64)exc1,  0b1111);
@@ -52,6 +47,5 @@ void idt_init() {
 	idt_add_entry(0x47, (u64)exc71, 0b1110);
 	idt_add_entry(0x48, (u64)exc72, 0b1110);
 
-	apidtr.address = idt;
-	asm volatile ("lidt %0" :: "m"(apidtr));
+	asm volatile ("lidt %0" :: "m"((idtr) { 0x0fff, idt }));
 }

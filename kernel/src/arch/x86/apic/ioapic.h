@@ -14,15 +14,15 @@ typedef union _attr_packed {
 	struct _attr_packed {
 		union _attr_packed {
 			struct _attr_packed {
-				u8 vector;
-				u8 delivery : 3;
-				u8 destination_logical : 1;
-				u8 deliv_sts : 1;
-				u8 active_low : 1;
-				u8 remote_irr : 1;
-				u8 lvl_trig : 1;
-				u8 mask : 1;
-				u32 : 17;
+				u32 vector : 8;
+				u32 delivery : 3;
+				u32 destination_logical : 1;
+				u32 deliv_sts : 1;
+				u32 active_low : 1;
+				u32 remote_irr : 1;
+				u32 lvl_trig : 1;
+				u32 mask : 1;
+				u32 : 15;
 			};
 			u32 lower;
 		};

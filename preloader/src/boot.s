@@ -62,6 +62,8 @@ pdp_k:
 	.skip 0x1000
 pd_k:
 	.skip 0x1000
+pt_k:
+	.skip 0x1000
 boot_info:
 	.skip 0x3000
 mb_fb:
@@ -220,6 +222,12 @@ kitolt_pd_pl4:
 	add $(511 * 8), %ebx
 	mov %eax, (%ebx)
 
+	mov $pt_k, %eax
+	or $MAP_DEF, %eax
+	mov $pd_k, %ebx
+	add $(112 * 8), %ebx
+	mov %eax, (%ebx)
+
 	mov $pd_k, %eax
 	or $MAP_DEF, %eax
 	mov $pdp_k, %ebx
@@ -346,19 +354,25 @@ vissza:
 	add %ecx, %edi
 	jmp szabad_e
 
-# TODO: (%edi)-ban van a szabad mem címe, de nem fix
-# hogy 2M aligned, ebben az esetben crash
-# 4K paging kell ide, page table mehet akár ebbe a régióba
 tovabb:
-	// mov (%edi), %eax
-	mov $0x1000000, %eax
-	mov 4(%edi), %ecx
-	or $MAP_DEF_2M, %eax
-	mov $pd_k, %ebx
-	add $(112 * 8), %ebx
-	mov %eax, (%ebx)
-	mov %ecx, 4(%ebx)
+	mov $_binary_kernel_start, %eax
+	add $0x8c, %eax
+	xor %ecx, %ecx # csak 32 bites a cím (0x100000)
+	or $MAP_DEF, %eax
+	mov $pt_k, %ebx
 
+	# %edx: számláló (1 MiB-nyi memóriát kéne mappelni)
+	xor %edx, %edx
+.pt_k_kitolt:
+	mov %eax, (%ebx, %edx, 8)
+	mov %ecx, 4(%ebx, %edx, 8)
+	add $0x1000, %eax
+
+	inc %edx
+	cmp $256, %edx
+	jne .pt_k_kitolt
+
+.pt_k_tovabb:
 	pop %edi
 
 	jmp tobbitag
@@ -458,64 +472,13 @@ messze:
 	cpuid
 	and $(1 << 26), %edx
 
-	movabs $_binary_kernel_start, %rax
-	cmpl $0x464c457f, (%rax) # ELF
-	jne hiba
-
-	xor %ebx, %ebx
-	mov 32(%rax), %ebx # Elf64_Ehdr->e_phoff
-	lea (%rax, %rbx, 1), %rcx
-
-	xor %rbx, %rbx
-	mov 54(%rax), %bx # Elf64_Ehdr->e_phentsize
-
-	xor %rsi, %rsi
-	mov 56(%rax), %si # Elf64_Ehdr->e_phnum
-
-	# %rcx: első phdr
-	# %rbx: entry size
-
-	# PT_LOAD: 1
-szegmens:
-	cmp $0, %rsi
-	je vege
-
-	# Ha nem PT_LOAD akkor nem kell vele foglalkozni
-	cmpl $1, (%rcx)
-	jne kovetkezo
-
-	# Szegmens betöltése
-	# %rdx: innen
-	# %rdi: ide
-	mov 8(%rcx), %rdx
-	add %rax, %rdx
-	xor %rdi, %rdi
-	mov 16(%rcx), %rdi
-	mov 32(%rcx), %r8
-
-	mov 40(%rcx), %r10 # memsz
-	call memset
-
-	call memcpy
-
-	# Következő PHDR
-kovetkezo:
-	add %rbx, %rcx
-	dec %rsi
-	jmp szegmens
-
 vege:
-	# TODO: BSS nulla
-	mov $IMAGE_END, %rsi
-	sub $IMAGE_START, %rsi
-	add $0x1000, %rsi
-
 	push %rbx
 	mov $0x00ffffff, %ebx
 	// call draw_rect64
 	pop %rbx
 
-	mov 24(%rax), %rbx # e_entry
+	mov _binary_kernel_start, %rbx # e_entry
 	jmp *%rbx
 
 hiba:

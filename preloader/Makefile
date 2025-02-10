@@ -16,10 +16,11 @@ out/%.s.o: src/%.s
 
 out/kernel.o: ../kernel/out/kernel
 	@echo "  > $(LD) $^"
-	@cp $^ kernel
-	@strip --strip-all kernel
+	@cp $^ kernelelf
+	@strip --strip-all kernelelf
+	@../tools/kernelsegextractor/segextr kernelelf kernel
 	@ld.gold -r -b binary kernel -o $@
-	@rm kernel
+	@rm kernel kernelelf
 
 syms:
 	@echo "  > tools/extractor ../kernel/out/kernel"

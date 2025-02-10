@@ -3,11 +3,11 @@
 #include <util/types.h>
 
 #if defined(__x86_64__) || defined(_M_X64)
-static inline void int_en() {
+__attribute__((always_inline)) static inline void int_en() {
 	asm volatile ("sti");
 }
 
-static inline void int_dis() {
+__attribute__((always_inline)) static inline void int_dis() {
 	asm volatile ("cli");
 }
 

@@ -11,6 +11,8 @@ SECTIONS {
 	}
 
 	.data : {
+		. = . | 0x0fff + 1 - 0x8c;
+		out/kernel.o(.data)
 		*(.data)
 	}
 

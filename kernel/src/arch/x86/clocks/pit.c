@@ -24,9 +24,15 @@ void pit_init() {
 	outb(count & 0x00ff, PIT_CH0);
 	outb((count & 0xff00) >> 8, PIT_CH0);
 
-	ioapic_set_destination(ioapic_irqs[0].gsi, 0, 0);
-	ioapic_set_vector(ioapic_irqs[0].gsi, 0x41);
-	ioapic_set_mask(ioapic_irqs[0].gsi, 0);
+	// ioapic_set_destination(ioapic_irqs[0].gsi, 0, 0);
+	// ioapic_set_vector(ioapic_irqs[0].gsi, 0x41);
+	// ioapic_set_mask(ioapic_irqs[0].gsi, 0);
+
+	ioapic_entry e = { .raw = 0 };
+	e.vector = 0x41;
+	e.destination_logical = 0;
+	e.destination = 0;
+	ioapic_write_entry(ioapic_irqs[0], e);
 
 	int_en();
 }

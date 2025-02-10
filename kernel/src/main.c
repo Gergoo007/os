@@ -105,6 +105,10 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 	filter.class.progif = 0x30;
 	dev_set_callback(DEV_SIG_CONNECT, filter, xhci_init, 0);
 
+	// PIC maszkok
+	outb(0xff, 0xa1);
+	outb(0xff, 0x21);
+
 	acpi_init(boot_info);
 
 	pit_init();

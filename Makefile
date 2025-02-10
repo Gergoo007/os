@@ -1,7 +1,7 @@
 RAMSIZE ?= 4G
 
 _QEMU_FLAGS := -cdrom arzene.iso -no-reboot -no-shutdown -m $(RAMSIZE) -M q35 $(QEMU_FLAGS) \
-		-smp 2 -drive id=disk,file=disk.img,if=none \
+		-smp 8 -drive id=disk,file=disk.img,if=none \
 		-device ich9-usb-uhci6,id=uhci -device qemu-xhci,id=xhci \
 		-device ahci,id=ahci \
 		-device ide-hd,drive=disk,bus=ahci.0 \
@@ -32,4 +32,4 @@ prepare_img:
 	@$(MAKE) -C kernel
 	@$(MAKE) -C preloader
 	@cp preloader/out/preloader bootstuff/kernel
-	@grub-mkrescue bootstuff -o arzene.iso --quiet
+	@grub-mkrescue bootstuff -o arzene.iso --quiet --locales= --themes=

@@ -74,14 +74,10 @@ void apic_process_madt(madt* m) {
 
 	ioapic_entry e = { .raw = 0 };
 	e.vector = 0x41;
-	ioapic_write_entry(ioapic_irqs[0], e);
+	// ioapic_write_entry(ioapic_irqs[0], e);
 
 	int_en();
 }
-
-// *((volatile uint32_t*)((void*)lapic) + 0x280) = 0;
-// *((volatile uint32_t*)((void*)lapic) + 0x310) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (i << 24);
-// *((volatile uint32_t*)((void*)lapic) + 0x300) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff00000) | 0x00C500;
 
 extern void ap_starter();
 
@@ -96,10 +92,16 @@ void lapic_init_smp() {
 	// SMP beállítása
 	printk("lapic init on bsp; num cores %d\n", computer->num_cpus);
 
-	u32 bsp = cpu_core();
+	// Lehet hogy volt valamilyen adat (pl. ACPI) úgyhogy
+	// ideiglenesen elpaterolom
+	map_page(0x8000, 0x8000, 0b11);
+	void* buf = kmalloc(0x1000);
+	memcpy(buf, (void*)0x8000, 0x1000);
 
-	map_page(0x0, 0x0, MAP_FLAGS_2M | 0b11);
-	memcpy((void*)0x8000, ap_starter, 0x2000);
+	u32 bsp = cpu_core();
+	memcpy((void*)0x8000, ap_starter, 0x1000);
+
+	*(volatile u8*)0x8500 = 0;
 
 	for (u32 i = 0; i < computer->num_cpus; i++) {
 		if (computer->cpus[i].apic_id == bsp) continue;
@@ -134,7 +136,7 @@ void lapic_init_smp() {
 		do { __asm__ __volatile__ ("pause" : : : "memory"); }while(*((volatile uint32_t*)((void*)lapic + 0x300)) & (1 << 12));         // wait for delivery
 		sleep(10);                                                                                                                 // wait 10 msec
 		// send STARTUP IPI (twice)
-		for(u32 j = 0; j < 2; j++) {
+		for(u32 j = 0; j < 1; j++) {
 			*((volatile uint32_t*)((void*)lapic + 0x280)) = 0;                                                                     // clear APIC errors
 			*((volatile uint32_t*)((void*)lapic + 0x310)) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (apic_id << 24); // select AP
 			*((volatile uint32_t*)((void*)lapic + 0x300)) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff0f800) | 0x000608;  // trigger STARTUP IPI for 0800:0000
@@ -142,9 +144,12 @@ void lapic_init_smp() {
 			// for (u16 k = 1; k; k++) asm volatile ("nop");
 			do { __asm__ __volatile__ ("pause" : : : "memory"); }while(*((volatile uint32_t*)((void*)lapic + 0x300)) & (1 << 12)); // wait for delivery
 		}
-
-		printk("fut\n");
 	}
 
-	while (1);
+	// memcpy((void*)0x8000, buf, 0x1000);
+	kfree(buf);
+
+	while (*(volatile u8*)0x8500 != 1);
+
+	printk("futnak\n");
 }
