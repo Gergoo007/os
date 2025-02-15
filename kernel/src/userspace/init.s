@@ -1,39 +1,48 @@
 .global userexec
-.global user_teszt
-.extern printf
-.extern cputu8
+.global userinit
+.global kstack
+.global ustack
+
 .extern cputs
 
 .section .bss
 kstack:
+	.quad 0
+ustack:
 	.quad 0
 
 .section .text
 # %rcx: return cím
 # %r11: %rflags
 on_syscall:
-	cmp $0, %eax
-	je .exit
-.printk:
-	push %rdi
-	push %rsi
-	push %r11
-	push %rcx
-	mov %rdi, %rdx
-	mov %rsi, %rcx
-	movabs $cputu8, %rdi
-	movabs $cputs, %rsi
-	call printf
-	pop %rcx
-	pop %r11
-	pop %rsi
-	pop %rdi
-	sysretq
-
-.exit:
+	movq %rsp, ustack(%rip)
 	movq kstack(%rip), %rsp
 
-	# Kernel regiszterek syscall előtt
+	cmp $0, %eax
+	je .exit
+
+	push %rax
+	push %rbx
+	push %rcx
+	push %rdx
+	push %rdi
+	push %rsi
+	push %rbp
+	push %r8
+	push %r9
+	push %r10
+	push %r11
+	push %r12
+	push %r13
+	push %r14
+	push %r15
+
+	push $.returnto
+
+.puts:
+	jmp cputs
+
+.returnto:
 	pop %r15
 	pop %r14
 	pop %r13
@@ -42,14 +51,18 @@ on_syscall:
 	pop %r10
 	pop %r9
 	pop %r8
+	pop %rbp
 	pop %rsi
 	pop %rdi
 	pop %rdx
 	pop %rcx
 	pop %rbx
 	pop %rax
-	pop %rbp
 
+	movq ustack(%rip), %rsp
+	sysretq
+
+.exit:
 	jmp khang
 
 # %rdi: entry
@@ -101,11 +114,28 @@ userexec:
 	# Felhasználói stack
 	mov %rsi, %rsp
 
-	# # %rip
+	# %rip
 	mov %rdi, %rcx
-	// mov $user_teszt, %rcx
 	# %eflags
-	// mov $0x202, %r11
 	mov $0x202, %r11
 
 	sysretq
+
+userinit:
+	# STAR MSR
+	movq $0xC0000081, %rcx
+	# STAR 63:48 + 16: user CS
+	# STAR 63:48 + 08: user SS
+	mov $0x00000000, %eax
+	mov $0x00130008, %edx
+	wrmsr
+
+	# LSTAR MSR
+	movq $0xC0000082, %rcx
+	# LSTAR: syscall %rip
+	movabs $on_syscall, %rdx
+	shr $32, %rdx
+	movabs $on_syscall, %rax
+	wrmsr
+
+	ret

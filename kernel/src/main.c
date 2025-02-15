@@ -1,6 +1,7 @@
 #include <gfx/console.h>
 #include <util/mem.h>
 #include <util/string.h>
+#include <util/printf.h>
 #include <util/dynlist.h>
 #include <serial/serial.h>
 #include <mm/pmm.h>
@@ -19,7 +20,7 @@
 #include <acpi/acpi.h>
 #include <boot/multiboot2.h>
 #include <userspace/init.h>
-#include <userspace/loader/loader.h>
+#include <userspace/sched/process.h>
 #include <fs/vfs/vfs.h>
 #include <fs/gpt.h>
 #include <fs/fat32/fat32.h>
@@ -34,6 +35,8 @@ extern u16* unilookup;
 
 u32 dump = 0;
 
+// TODO: a sleep nem működik (hlt-ot használ, de ahhoz kellenek interruptok)
+
 // ACPI rewrite
 
 // TODO: kfree megjavítása
@@ -41,12 +44,7 @@ u32 dump = 0;
 // TODO: Serial -> arch/x86
 // TODO: PS/2: Van-e eszköz az első porton egyáltalán?
 
-// Saját ACPI driver??
 // -O3 support
-
-void oncon() {
-	printk("LE LETT HÍVVA!\n");
-}
 
 _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len) {
 	asm volatile ("mov %%cr3, %0" : "=r"(pml4));
@@ -138,17 +136,44 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 			if (d->tbl->parts[p].type == PART_ESP) {
 				vfs_mkdir("/fat");
 				fat32_mount(&d->tbl->parts[p], "/fat");
+				printk("turi\n");
 			}
 		}
 	}
 
 	vfs_list_mnts();
 
-	// dd* root = vfs_readdir("/fat/");
-	// printk("fileok ");
-	// foreach(i, root->num_entries) {
-	// 	printk("%s ", root->entries[i].name);
-	// }
+	sched_init();
+
+	dd* root = vfs_readdir("/fat/");
+	void* c1,* c2;
+	foreach(i, root->num_entries) {
+		if (!strcmp(root->entries[i].name, "exe1")) {
+			char p[64];
+			strcat(p, "/fat/");
+			strcat(p, root->entries[i].name);
+			fd* f = vfs_open(p, "r");
+			u64 size = vfs_get_size(f);
+			c1 = kmalloc(size);
+			vfs_read(f, c1, size);
+		} else if (!strcmp(root->entries[i].name, "exe2")) {
+			char p[64];
+			strcat(p, "/fat/");
+			strcat(p, root->entries[i].name);
+			fd* f = vfs_open(p, "r");
+			u64 size = vfs_get_size(f);
+			c2 = kmalloc(size);
+			vfs_read(f, c2, size);
+		}
+	}
+
+	sched_new_process_from_elf(c1);
+	sched_new_process_from_elf(c2);
+
+	extern u64 kstack, ustack;
+	u64 rsp2;
+	asm volatile ("movq %%rsp, %0" : "=r"(rsp2));
+	kstack = rsp2;
 
 	u32 old = con_fg;
 	con_fg = 0x0000ff00;

@@ -34,11 +34,7 @@ void paging_init(void) {
 }
 
 u64 paging_lookup(u64 virt) {
-	page_table* cr3;
-	asm volatile ("movq %%cr3, %0" : "=r"(cr3));
-	MAKE_VIRTUAL(cr3);
-
-	page_table* pdp = (page_table*)(cr3->entries[ADDR_PML4I(virt)].addr & ~0x0fff);
+	page_table* pdp = (page_table*)(pml4->entries[ADDR_PML4I(virt)].addr & ~0x0fff);
 	MAKE_VIRTUAL(pdp);
 	page_table* pd = (page_table*)(pdp->entries[ADDR_PDPI(virt)].addr & ~0x0fff);
 	MAKE_VIRTUAL(pd);
@@ -83,6 +79,8 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 	entry = &pml4->entries[ADDR_PML4I(virt)];
 	if (entry->flags & MAP_FLAGS_PRESENT) {
 		pdp = (page_table*) ((pml4->entries[ADDR_PML4I(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
+		if (flags & MAP_FLAGS_USER)
+			pml4->entries[ADDR_PML4I(virt)].flags |= MAP_FLAGS_USER;
 	} else {
 		pdp = (page_table*)vmm_alloc();
 		memset(pdp, 0, 0x1000);
@@ -98,6 +96,8 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 	} else {
 		if (entry->flags & MAP_FLAGS_PRESENT) {
 			pd = (page_table*) ((pdp->entries[ADDR_PDPI(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
+			if (flags & MAP_FLAGS_USER)
+				pdp->entries[ADDR_PDPI(virt)].flags |= MAP_FLAGS_USER;
 		} else {
 			pd = (page_table*)vmm_alloc();
 			memset(pd, 0, 0x1000);
@@ -114,6 +114,8 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 	} else { // 4K page
 		if (entry->flags & MAP_FLAGS_PRESENT) {
 			pt = (page_table*) ((pd->entries[ADDR_PDI(virt)].addr & ~0x0fff) | 0xffff800000000000ULL);
+			if (flags & MAP_FLAGS_USER)
+				pd->entries[ADDR_PDI(virt)].flags |= MAP_FLAGS_USER;
 		} else {
 			pt = (page_table*)vmm_alloc();
 			memset(pt, 0, 0x1000);
@@ -127,4 +129,17 @@ void map_page(u64 virt, u64 phys, u32 flags) {
 	}
 
 	asm volatile ("invlpg (%0)" :: "r"(virt));
+}
+
+void unmap(u64 virt) {
+	
+}
+
+void unmap_and_free(u64 virt) {
+	
+}
+
+void set_cr3(void* new) {
+	pml4 = new;
+	asm volatile ("movq %0, %%cr3" :: "rax"(new));
 }

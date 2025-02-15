@@ -7,8 +7,16 @@
 #include <mm/paging.h>
 #include <mm/vmm.h>
 #include <mm/pmm.h>
+#include <arch/x86/gdt.h>
+#include <arch/x86/idt.h>
 
 volatile lapic_regs* lapic;
+atomic u32 cpus_up = 1;
+
+#define STACKSIZE 0x1000
+void** smp_stacks;
+
+u32 lapic_speed;
 
 volatile lapic_regs* lapic_get_lapic() {
 	u32 lo, hi;
@@ -79,16 +87,32 @@ void apic_process_madt(madt* m) {
 	int_en();
 }
 
+// tick: hány ms lapic_speed mennyiségű lapic timer tick
+void lapic_init_timer(u32 tick) {
+	lapic_lvt timer;
+	timer.raw = lapic->lvt_timer;
+	timer.tmr.vector = 0x44;
+	timer.tmr.mask = 1;
+	timer.tmr.mode = LAPIC_PERIODIC;
+	lapic->lvt_timer = timer.raw;
+
+	lapic->timer_divide = 0x3;
+	lapic->timer_inital = 0xffffffff;
+	sleep(tick);
+	lapic_speed = 0xffffffff - lapic->timer_current;
+
+	lapic->timer_inital = lapic_speed;
+
+	// A lapic_speed tartalmazza hogy 100 ms alatt mennyit tickelt
+	// Most mehetnek az interruptok, periodic módban
+	timer.raw = lapic->lvt_timer;
+	timer.tmr.mask = 0;
+	lapic->lvt_timer = timer.raw;
+}
+
 extern void ap_starter();
 
-extern u32 apcr3;
-
 void lapic_init_smp() {
-	u64 asd;
-	asm volatile ("mov %%cr3, %0" : "=a"(asd));
-	printk("cr3 %p\n", asd);
-	apcr3 = asd;
-
 	// SMP beállítása
 	printk("lapic init on bsp; num cores %d\n", computer->num_cpus);
 
@@ -101,32 +125,26 @@ void lapic_init_smp() {
 	u32 bsp = cpu_core();
 	memcpy((void*)0x8000, ap_starter, 0x1000);
 
-	*(volatile u8*)0x8500 = 0;
+	u64 cr3;
+	asm volatile ("mov %%cr3, %0" : "=a"(cr3));
+	printk("cr3 %p\n", cr3);
+	*(u32*)0x8500 = cr3;
+
+	smp_stacks = kmalloc(sizeof(void*) * (computer->num_cpus - 1));
+
+	u32 normalamount = 1;
 
 	for (u32 i = 0; i < computer->num_cpus; i++) {
 		if (computer->cpus[i].apic_id == bsp) continue;
+		// if (!computer->cpus[i].online_capable) continue;
 		u32 apic_id = computer->cpus[i].apic_id;
 
 		if (heap_base_phys < 0xa000) warn("Az SMP bootstrap kód veszélyes helyen van!");
 
-		// lapic->err_sts = 0;
-		// lapic->int_cmd1 = (lapic->int_cmd1 & 0x00ffffff) | (apic_id << 24);	// APIC ID küldése
-		// lapic->int_cmd0 = (lapic->int_cmd0 & 0xfff00000) | 0xc500;			// INIT IPI
-		// do { membar(); } while (*((volatile u32*)((void*)lapic + 0x300)) & (1 << 12));	// Status?
-		// lapic->int_cmd1 = (lapic->int_cmd1 & 0x00ffffff) | (apic_id << 24);	// APIC ID küldése
-		// lapic->int_cmd0 = (lapic->int_cmd0 & 0xfff00000) | 0x8500;			// deassert
-		// do { membar(); } while (*((volatile u32*)((void*)lapic + 0x300)) & (1 << 12));
-		// printk("asd\n");
-		// sleep(10);
+		smp_stacks[i-1] = kmalloc(STACKSIZE);
 
-		// // STARTUP IPI
-		// for (u32 j = 0; j < 2; j++) {
-		// 	lapic->err_sts = 0;
-		// 	lapic->int_cmd1 = (lapic->int_cmd1 & 0x00ffffff) | (apic_id << 24);	// APIC ID küldése
-		// 	lapic->int_cmd0 = (lapic->int_cmd0 & 0xfff0f800) | 0x000608;
-		// 	sleep(1);
-		// 	do { membar(); } while (*((volatile u32*)((void*)lapic + 0x300)) & (1 << 12));
-		// }
+		normalamount++;
+
 		*((volatile uint32_t*)((void*)lapic + 0x280)) = 0;                                                                             // clear APIC errors
 		*((volatile uint32_t*)((void*)lapic + 0x310)) = (*((volatile uint32_t*)((void*)lapic + 0x310)) & 0x00ffffff) | (apic_id << 24);         // select AP
 		*((volatile uint32_t*)((void*)lapic + 0x300)) = (*((volatile uint32_t*)((void*)lapic + 0x300)) & 0xfff00000) | 0x00C500;          // trigger INIT IPI
@@ -146,10 +164,24 @@ void lapic_init_smp() {
 		}
 	}
 
-	// memcpy((void*)0x8000, buf, 0x1000);
 	kfree(buf);
+	// unmap_and_free(0x8000);
+	
 
-	while (*(volatile u8*)0x8500 != 1);
+	while (normalamount > cpus_up);
+}
 
-	printk("futnak\n");
+void onsmp() {
+	cpus_up++;
+
+	extern gdt_entry* gdt;
+	gdt_load(&(gdtr) {
+		sizeof(gdt_entry) * 8 - 1,
+		(u64) gdt,
+	});
+
+	extern idt_entry* idt;
+	asm volatile ("lidt %0" :: "m"((idtr) { 0x0fff, idt }));
+
+	while (1) asm volatile ("hlt");
 }

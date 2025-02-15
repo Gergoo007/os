@@ -36,6 +36,8 @@ typedef u64 uintptr_t;
 
 typedef __SIZE_TYPE__ size_t;
 
+#define atomic _Atomic
+
 #define UINT64_C(v) v##ULL
 
 #define va_start(v, l)	__builtin_va_start(v,l)

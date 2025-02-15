@@ -63,34 +63,6 @@ void gdt_init() {
 }
 
 void gdt_add_tss(tss* t) {
-	// // MAKE_PHYSICAL(t);
-	// // t = (tss*)paging_lookup((u64)t);
-	// printk("TSS @ %p\n", t);
-	// gdt[5].base1 = (u64)t;
-	// gdt[5].base2 = (u64)t >> 16;
-	// gdt[5].base3 = (u64)t >> 24;
-	// *(u32*)&gdt[6] = (u64)t >> 32;
-
-	// // _gdt->tss2.access_byte = 0x89;
-	// *(u8*)&(gdt[5].access_byte) = 0b10001001;
-	// // *(u8*)&(gdt[5].access_byte) = 0x89;
-	// gdt[5].access_byte.sys_seg_desc.dpl = 0;
-	// gdt[5].avl = 0;
-	// gdt[5].long_mode = 1;
-	// gdt[5].size = 1;
-	// gdt[5].limit_in_pages = 0;
-
-	// u32 limit = sizeof(tss) - 1; // Bitmap beletartozik?
-
-	// gdt[5].limit1 = limit & 0xf;
-	// gdt[5].limit2 = limit >> 4;
-
-	// printk("tss1 %p\n", *(u64*)&gdt[5]);
-	// printk("tss2 %p\n", *(u64*)&gdt[6]);
-
-	// MAKE_PHYSICAL(t);
-	// t = (tss*)paging_lookup((u64)t);
-	printk("TSS @ %p\n", t);
 	gdt[5].base1 = (u64)t;
 	gdt[5].base2 = (u64)t >> 16;
 	gdt[5].base3 = (u64)t >> 24;
@@ -109,7 +81,4 @@ void gdt_add_tss(tss* t) {
 
 	gdt[5].limit1 = limit & 0xf;
 	gdt[5].limit2 = limit >> 4;
-
-	printk("tss1 %p\n", *(u64*)&gdt[5]);
-	printk("tss2 %p\n", *(u64*)&gdt[6]);
 }

@@ -1,20 +1,16 @@
 #include <gfx/console.h>
 #include <serial/serial.h>
-
 #include <mm/paging.h>
 #include <mm/pmm.h>
-
 #include <arch/x86/apic/apic.h>
 #include <arch/x86/clocks/pit.h>
 #include <arch/x86/clocks/hpet.h>
 #include <arch/x86/idt.h>
-
 #include <acpi/lai/helpers/sci.h>
 #include <acpi/lai/helpers/pm.h>
-
 #include <ps2/kbd.h>
-
 #include <util/stacktrace.h>
+#include <userspace/sched/process.h>
 
 #define print_reg(st, reg) printk("%s: %p ", #reg, st->reg)
 #define sprint_reg(st, reg) sprintk("%s: %p ", #reg, st->reg)
@@ -63,6 +59,14 @@ end:
 				printk("Bekapcsoló gomb benyomva, kikapcs...\n");
 				lai_enter_sleep(5);
 			}
+			lapic_eoi();
+			break;
+		}
+
+		case 0x44: {
+			sched_save_context(regs);
+			sched_tick();
+
 			lapic_eoi();
 			break;
 		}

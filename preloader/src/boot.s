@@ -43,7 +43,7 @@ mb2_hdr_end:
 .section .bss
 .align 8
 stack:
-	.skip 0x10000
+	.skip 0x8000
 stack_end:
 .align 0x1000
 pml4:

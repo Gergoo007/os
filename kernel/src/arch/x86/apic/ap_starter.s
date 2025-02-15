@@ -10,8 +10,7 @@ ap_starter:
 	cld
 	ljmp $0, $0x8007
 nullcs:
-	# cr3
-	mov $0x160000, %eax
+	movl 0x8500, %eax
 	mov %eax, %cr3
 
 	mov $0xc0000080, %ecx
@@ -28,13 +27,8 @@ nullcs:
 	mov $0x11, %eax
 	mov %eax, %cr0
 
-	xchg %bx, %bx
 	mov $0x80000011, %eax
 	mov %eax, %cr0
-
-	nop
-	nop
-	nop
 
 	lgdt 0x8110
 
@@ -51,10 +45,22 @@ gdtr:
 
 .org 0x8200
 .code64
+.extern onsmp
+.extern cpus_up
 longmode:
-	cli
-	movb $1, 0x8500
-	jmp .
+	# TODO: Az APIC ID nem biztos hogy sorrendbe van 0-tól
+	mov $1, %eax
+	cpuid
 
-apcr3:
-	.quad
+	shr $24, %ebx
+	xor %rcx, %rcx
+	movzwl %bx, %ecx
+	dec %ecx
+
+	mov smp_stacks, %rbx
+
+	mov (%rbx, %rcx, 8), %rsp
+	mov (%rbx, %rcx, 8), %rbp
+
+	lea onsmp, %rax
+	jmp *%rax

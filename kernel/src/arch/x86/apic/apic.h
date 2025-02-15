@@ -63,8 +63,35 @@ typedef struct lapic_regs {
 	al u32 r8[4];
 } lapic_regs;
 
+typedef union _attr_packed lapic_lvt {
+	struct _attr_packed {
+		u32 vector : 8;
+		u32 nmi : 3;
+		u32 : 1;
+		u32 pending : 1;
+		u32 active_low : 1;
+		u32 irr : 1;
+		u32 lvl_trig : 1;
+		u32 mask : 1;
+	} generic;
+	struct _attr_packed {
+		u32 vector : 8;
+		u32 : 4;
+		u32 pending : 1;
+		u32 : 3;
+		u32 mask : 1;
+		enum {
+			LAPIC_ONESHOT = 0b00,
+			LAPIC_PERIODIC = 0b01,
+			LAPIC_TSC = 0b10,
+		} mode : 2;
+	} tmr;
+	u32 raw;
+} lapic_lvt;
+
 #undef al
 
 void apic_process_madt(madt* m);
 void lapic_eoi();
 void lapic_init_smp();
+void lapic_init_timer(u32 tick);

@@ -11,7 +11,7 @@ void (*elf_load(void* elf))() {
 		for (u64 a = p->p_vaddr; a < (p->p_vaddr + p->p_memsz); a += 0x1000) {
 			map_page(a, (u64)pmm_alloc(), 0b11 | MAP_FLAGS_USER);
 		}
-		memcpy((void*)p->p_vaddr, elf + p->p_offset, p->p_filesz);
+		memcpy((void*)VIRTUAL(paging_lookup(p->p_vaddr)), elf + p->p_offset, p->p_filesz);
 	}
 
 	return (void*)e->e_entry;
