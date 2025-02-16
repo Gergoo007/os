@@ -95,3 +95,4 @@ void apic_process_madt(madt* m);
 void lapic_eoi();
 void lapic_init_smp();
 void lapic_init_timer(u32 tick);
+void lapic_mask_timer(u8 mask);

@@ -28,7 +28,14 @@ debug:
 bochs: prepare_img
 	bochs -qf emustuff/.bochsrc -rc emustuff/bochscmd
 
-prepare_img:
+init:
+	@$(MAKE) -C userland/init
+	@rm -rf initrd
+	@mkdir initrd
+	@cp userland/init/init initrd/init
+	@cd initrd/ && tar -c --format=ustar -f ../bootstuff/initrd *
+
+prepare_img: init
 	@$(MAKE) -C kernel
 	@$(MAKE) -C preloader
 	@cp preloader/out/preloader bootstuff/kernel

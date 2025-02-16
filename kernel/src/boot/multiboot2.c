@@ -5,6 +5,7 @@
 #include <gfx/console.h>
 #include <mm/pmm.h>
 #include <mm/paging.h>
+#include <util/string.h>
 
 struct elf64_sym* ksymtab;
 void* kstrtab;
@@ -46,6 +47,11 @@ void multiboot2_parse(mb_tag* addr, u64 pl_img_len) {
 				fb_main.size = fb->width * fb->height * (fb->bpp/8);
 				fb_main.width = fb->width;
 				fb_main.height = fb->height;
+				break;
+			}
+			case MB_TAG_MODULE: {
+				initrd = (void*)VIRTUAL((u64)*(u32*)((void*)addr + 8));
+				initrd_end = (void*)VIRTUAL((u64)*(u32*)((void*)addr + 12));
 				break;
 			}
 		}

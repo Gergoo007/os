@@ -56,11 +56,17 @@ void fat32_mount(partition* part, char* path) {
 	num_mnts++;
 }
 
-u128 fat32_read_entry(partition* fs, char* path) {
+typedef struct {
+	fat32_entry* addr;
+	u64 sz : 63;
+	u8 dir : 1;
+} read_entry_ret;
+
+read_entry_ret fat32_read_entry(partition* fs, char* path) {
 	// Első 64 bit: memóriacím
 	// Utána levő 63 bit: fájlok száma/fájlméret
 	// Utolsó 1 bit: 1 ha mappa; 0 ha fájl
-	u128 ret = 0;
+	read_entry_ret ret = {  };
 
 	fat32_bpb* bpb = fs->f32c->bpb;
 
@@ -88,12 +94,12 @@ u128 fat32_read_entry(partition* fs, char* path) {
 			for (u32 c = cluster; (fs->f32c->fat[c] & 0x0fffffff) != 0x0fffffff; c++)
 				size++;
 
-			ret |= (u64)kmalloc(size*unit);
-			ret |= (u128)1 << 127;
-			ret |= (u128)(size*unit / sizeof(fat32_entry)) << 64;
+			ret.addr = kmalloc(size*unit);
+			ret.dir = 1;
+			ret.sz = size*unit / sizeof(fat32_entry);
 
 			for (u32 c = cluster; 1; c++) {
-				drive_read(fs->drive, fs->f32c->lba_data + (c-1) * bpb->sectors_per_cluster, size*unit, (void*)ret);
+				drive_read(fs->drive, fs->f32c->lba_data + (c-1) * bpb->sectors_per_cluster, size*unit, ret.addr);
 				if ((fs->f32c->fat[c] & 0x0fffffff) == 0x0fffffff)
 					break;
 			}
@@ -118,7 +124,7 @@ u128 fat32_read_entry(partition* fs, char* path) {
 					while (1);
 				}
 
-				// TODO
+				// TODO: csak a név elejét nézi, tehát ez a kód szerint modules = modules.d
 				if (!strncmp(search, name, namelen) && !name[namelen]) {
 					if (d[i].std.attrs & FAT_ATTR_DIR) {
 						// Mappa
@@ -134,10 +140,10 @@ u128 fat32_read_entry(partition* fs, char* path) {
 								error("Mappa túl nagy, hiányozhatnak fájlok!");
 							drive_read(fs->drive, fs->f32c->lba_data + (d[i].std.first_cluster_lower-2)*bpb->sectors_per_cluster, 4096, d);
 						} else {
-							ret |= (u64)kmalloc(size*unit);
-							ret |= (u128)1 << 127;
-							ret |= (u128)(size*unit / sizeof(fat32_entry)) << 64;
-							void* buf = (void*)(u64)ret;
+							ret.addr = kmalloc(size*unit);
+							ret.dir = 1;
+							ret.sz = size*unit / sizeof(fat32_entry);
+							void* buf = ret.addr;
 
 							for (u32 c = cluster; 1; c++) {
 								// printk("%d vs %d\n", d[i].std.first_cluster_lower-2, c-2);
@@ -151,8 +157,8 @@ u128 fat32_read_entry(partition* fs, char* path) {
 						}
 					} else {
 						// Fájl
-						ret |= (u64)kmalloc(sizeof(fat32_entry));
-						memcpy((void*)ret, &d[i], sizeof(fat32_entry));
+						ret.addr = kmalloc(sizeof(fat32_entry));
+						memcpy((void*)ret.addr, &d[i], sizeof(fat32_entry));
 						goto exit;
 					}
 
@@ -165,6 +171,9 @@ next:
 		search += namelen;
 	}
 
+	error("No such file");
+	errno = ENOENT;
+
 exit:
 	kfree(d);
 	kfree(wname);
@@ -174,11 +183,16 @@ exit:
 }
 
 void fat32_read(partition* fs, char* path, void* into, u64 bytes) {
-	struct { fat32_entry* addr; u64 sz : 63; u8 dir : 1; } asd;
-	*(u128*)&asd = fat32_read_entry(fs, path);
+	read_entry_ret asd = fat32_read_entry(fs, path);
 	if (asd.dir) {
 		errno = EISDIR;
-		error("Not a file");
+		warn("Not a file");
+		return;
+	}
+
+	if (!asd.addr) {
+		errno = ENOENT;
+		warn("No such file");
 		return;
 	}
 
@@ -192,8 +206,7 @@ void fat32_read(partition* fs, char* path, void* into, u64 bytes) {
 }
 
 void fat32_readdir(partition* fs, char* path, dd** into) {
-	struct { fat32_entry* addr; u64 sz : 63; u8 dir : 1; } asd;
-	*(u128*)&asd = fat32_read_entry(fs, path);
+	auto asd = fat32_read_entry(fs, path);
 	if (!asd.dir) {
 		errno = ENOTDIR;
 		return;
@@ -249,14 +262,16 @@ void fat32_readdir(partition* fs, char* path, dd** into) {
 }
 
 u64 fat32_get_size(partition* fs, char* path) {
-	struct { fat32_entry* addr; u64 sz : 63; u8 dir : 1; } asd;
-	*(u128*)&asd = fat32_read_entry(fs, path);
+	read_entry_ret asd = fat32_read_entry(fs, path);
 	if (asd.dir) {
 		errno = EISDIR;
 		error("Not a file");
 		return 0;
-	} else {
+	} else if (asd.addr) {
 		return asd.addr->std.filesize;
+	} else {
+		errno = ENOENT;
+		return 0;
 	}
 }
 

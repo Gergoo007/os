@@ -18,4 +18,5 @@ extern process* proctable;
 void sched_init();
 void sched_tick();
 void sched_save_context(cpu_regs* regs);
-u32 sched_new_process_from_elf(void* e);
+u32 sched_spawn_elf(void* e);
+void sched_remove_process(u32 pid);

@@ -68,6 +68,9 @@ void con_newline() {
 		memcpy((void*)fb_main.base, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
 		memcpy((void*)fb_main.backbuf, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
 
+		memset((void*)fb_main.base + (fb_main.width * (fb_main.height - line_height) * 4), 0, fb_main.width * line_height * 4);
+		memset((void*)fb_main.backbuf + (fb_main.width * (fb_main.height - line_height) * 4), 0, fb_main.width * line_height * 4);
+
 		// memcpy_avx_aligned((void*)fb_main.base, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
 		// memcpy_avx_aligned((void*)fb_main.backbuf, (void*)fb_main.backbuf + fb_main.width * line_height * 4, fb_main.width * (fb_main.height - line_height) * 4);
 	} else {

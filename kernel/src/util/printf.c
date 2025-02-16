@@ -49,21 +49,35 @@ void vprintf(u8 (*putc)(const char* c),
 
 				case '.': {
 					fmt++;
-					u8 num = *fmt - '0';
-					fmt++;
-
-					if (*fmt == 's') {
+					if (*fmt == '*') {
+						fmt++;
+						u32 count = va_arg(l, u32);
 						char* str = va_arg(l, char*);
-						while (num--) {
-							putc(str++);
+						switch (*fmt) {
+							case 's': {
+								while (count--) {
+									putc(str++);
+								}
+								break;
+							}
 						}
 					} else {
-						num = num * 10 + (*fmt - '0');
-						char* str = va_arg(l, char*);
-						while (num--) {
-							putc(str++);
-						}
+						u8 num = *fmt - '0';
 						fmt++;
+
+						if (*fmt == 's') {
+							char* str = va_arg(l, char*);
+							while (num--) {
+								putc(str++);
+							}
+						} else {
+							num = num * 10 + (*fmt - '0');
+							char* str = va_arg(l, char*);
+							while (num--) {
+								putc(str++);
+							}
+							fmt++;
+						}
 					}
 
 					break;

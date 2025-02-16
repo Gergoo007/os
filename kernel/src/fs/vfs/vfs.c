@@ -22,7 +22,7 @@ void vfs_init() {
 	ramfs_register_module();
 	fat32_register_module();
 
-	ramfs_mount(0, "/");
+	// ramfs_mount(0, "/");
 }
 
 void vfs_list_mnts() {

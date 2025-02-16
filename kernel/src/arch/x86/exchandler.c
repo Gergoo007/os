@@ -65,9 +65,8 @@ end:
 
 		case 0x44: {
 			sched_save_context(regs);
+			printk("q");
 			sched_tick();
-
-			lapic_eoi();
 			break;
 		}
 

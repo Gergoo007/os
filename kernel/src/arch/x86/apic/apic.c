@@ -11,6 +11,7 @@
 #include <arch/x86/idt.h>
 
 volatile lapic_regs* lapic;
+volatile u32* lapic_timer;
 atomic u32 cpus_up = 1;
 
 #define STACKSIZE 0x1000
@@ -28,6 +29,7 @@ volatile lapic_regs* lapic_get_lapic() {
 
 void lapic_init() {
 	lapic = lapic_get_lapic();
+	lapic_timer = (void*)lapic + 0x320;
 	// LAPIC beállítása
 	printk("APIC verzió %02x\n", lapic->version);
 	lapic->spur_int = 0xff | (1 << 8);
@@ -107,6 +109,13 @@ void lapic_init_timer(u32 tick) {
 	// Most mehetnek az interruptok, periodic módban
 	timer.raw = lapic->lvt_timer;
 	timer.tmr.mask = 0;
+	lapic->lvt_timer = timer.raw;
+}
+
+void lapic_mask_timer(u8 mask) {
+	lapic_lvt timer;
+	timer.raw = lapic->lvt_timer;
+	timer.tmr.mask = mask;
 	lapic->lvt_timer = timer.raw;
 }
 

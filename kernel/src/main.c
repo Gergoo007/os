@@ -3,6 +3,7 @@
 #include <util/string.h>
 #include <util/printf.h>
 #include <util/dynlist.h>
+#include <util/ustar.h>
 #include <serial/serial.h>
 #include <mm/pmm.h>
 #include <mm/vmm.h>
@@ -33,7 +34,8 @@
 extern _attr_noret void khang();
 extern u16* unilookup;
 
-u32 dump = 0;
+void* initrd_end;
+void* initrd;
 
 // TODO: a sleep nem működik (hlt-ot használ, de ahhoz kellenek interruptok)
 
@@ -90,6 +92,11 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 
 	devmgr_init();
 
+	if (!initrd) {
+		error("Nincs initrd!");
+		while (1);
+	}
+
 	// AHCI
 	dev_cb_filter filter;
 	filter.type = DEV_TRIG_PCI_CLASS_SUBCLASS_PROGIF;
@@ -134,9 +141,8 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 		dev_drive* d = dynlist_get(&drives, i, dev_drive*);
 		foreach(p, d->tbl->num_parts) {
 			if (d->tbl->parts[p].type == PART_ESP) {
-				vfs_mkdir("/fat");
-				fat32_mount(&d->tbl->parts[p], "/fat");
-				printk("turi\n");
+				// vfs_mkdir("/fat");
+				fat32_mount(&d->tbl->parts[p], "/");
 			}
 		}
 	}
@@ -145,44 +151,32 @@ _attr_align_stack _attr_noret void kmain(void* boot_info, u64 preloader_img_len)
 
 	sched_init();
 
-	dd* root = vfs_readdir("/fat/");
-	void* c1,* c2;
-	foreach(i, root->num_entries) {
-		if (!strcmp(root->entries[i].name, "exe1")) {
-			char p[64];
-			strcat(p, "/fat/");
-			strcat(p, root->entries[i].name);
-			fd* f = vfs_open(p, "r");
-			u64 size = vfs_get_size(f);
-			c1 = kmalloc(size);
-			vfs_read(f, c1, size);
-		} else if (!strcmp(root->entries[i].name, "exe2")) {
-			char p[64];
-			strcat(p, "/fat/");
-			strcat(p, root->entries[i].name);
-			fd* f = vfs_open(p, "r");
-			u64 size = vfs_get_size(f);
-			c2 = kmalloc(size);
-			vfs_read(f, c2, size);
-		}
+	tar_file f = tar_read_file(initrd, "init");
+	if (!f.content) {
+		error("No init!");
+	} else {
+		printk("spawn as %d\n", sched_spawn_elf(f.content));
 	}
-
-	sched_new_process_from_elf(c1);
-	sched_new_process_from_elf(c2);
-
-	extern u64 kstack, ustack;
-	u64 rsp2;
-	asm volatile ("movq %%rsp, %0" : "=r"(rsp2));
-	kstack = rsp2;
 
 	u32 old = con_fg;
 	con_fg = 0x0000ff00;
 	printk("Kernel idle...\n");
 	con_fg = old;
 
+	sleep(5000);
+
+	printk("turi ip ip\n");
+
+	if (!f.content) {
+		error("No init!");
+	} else {
+		printk("spawn as %d\n", sched_spawn_elf(f.content));
+	}
+
 	khang();
 }
 
+// Idle folyamat (PID 0), hogy legyen minek futnia
 _attr_noret void khang() {
 	while (1) { asm volatile ("hlt"); }
 }

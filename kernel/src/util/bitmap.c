@@ -2,7 +2,7 @@
 #include <util/mem.h>
 
 void bm_init(bitmap* bm) {
-	memset(bm->base, 0, bm->size / 8);
+	memset(bm->base, 0, bm->size);
 }
 
 u64 bm_alloc(bitmap* bm) {
